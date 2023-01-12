@@ -2,7 +2,7 @@ local M = {config = {input = true, select = true, docmd = true}}
 
 return {
 	---Set configuration and initiate reform.nvim
-	---@param config? {input: boolean, select: boolean, docmd: boolean}
+	---@param config? {input: boolean|function, select: boolean|function, docmd: boolean|table}
 	---@see https://github.com/JosefLitos/reform.nvim
 	setup = function(config)
 		M.config = vim.tbl_deep_extend("force", M.config, config or {})

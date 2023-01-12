@@ -2,7 +2,7 @@ local M = {
 	default = {
 		convert = vim.lsp.util.convert_input_to_markdown_lines,
 		stylize = vim.lsp.util.stylize_markdown,
-		config = {override = {}, ft = {c = true, cpp = true, lua = true}},
+		config = {override = {}, ft = {c = true, cpp = true, lua = true, java = true}},
 	},
 	set = {},
 }
@@ -11,7 +11,6 @@ function M.default.config.override.convert(doc, contents)
 	-- vim.api.nvim_echo({{vim.inspect(doc)}}, false, {})
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == "string" or doc.kind == "plaintext" then return vim.split(doc.value or doc, "\n") end
-	if doc.language then return vim.split("```" .. doc.language .. "\n" .. doc.value .. "```", "\n") end
 	local str = doc.value
 	if doc[1] and not str then
 		str = ""
@@ -25,12 +24,11 @@ function M.default.config.override.convert(doc, contents)
 	end
 
 	if M.config.ft[vim.bo.filetype] then
-		-- vim.api.nvim_echo({{str}}, false, {})
-		str = require 'reform.docfmt.main'(str, vim.bo.filetype)
 		-- vim.api.nvim_echo({{vim.inspect(str)}}, false, {})
-		return vim.split(str, "\n")
+		return vim.split(require 'reform.docfmt.main'(str, vim.bo.filetype), "\n")
 	end
 
+	-- regex fallback that does some basic transformation
 	str = str:gsub("%s+(```\n)", "%1"):gsub("([ \n\t])`([^`\n]+%s[^`\n]+)`%s*",
 			"%1\n```" .. vim.bo.filetype .. "\n%2```\n")
 	if vim.bo.filetype == "java" then

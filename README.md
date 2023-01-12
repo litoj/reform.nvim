@@ -27,7 +27,7 @@ require'reform'.setup { -- values are `boolean` or replacement `function`
       cmp_doc = true|fun(), -- replace cmp docs function - require'cmp.entry'.get_documentation
     },
     ft = { -- only boolean values
-      c = true, cpp = true, lua = true
+      c = true, cpp = true, lua = true, java = true
     }
   }
 }
