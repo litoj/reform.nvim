@@ -1,9 +1,10 @@
 # reform.nvim
 
-Reform the looks of lsp documentation and possibly a few ui elements.
-Documentation parser written in `C`, with `lua` regex modifications as fallback.
+Documentation should be informative, concise, and easy to read.
+Reform the looks of lsp documentation and possibly a few ui elements with a unifying
+documentation parser written in `C`, with primitive fallback parser using `lua` EREs.
 
-## Installing with [`packer`](https://github.com/wbthomason/packer.nvim)
+## Installation - [`packer`](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
@@ -13,14 +14,48 @@ use {
 }
 ```
 
+## Goals
+
+### Featured
+
+- identical look across different languages (including vim docs in lua)
+- as fast as possible - formatted with a single readthrough, written in `C`
+- customizable - all functions can be replaced by your own
+
+### Planned
+
+- support more languages
+- links in documentation window should be clickable
+- error handling to avoid entire nvim crash when parsing incorrect markdown
+  - probably should fix lua crash with cmp-nvim-lsp-signature-help
+- more dev friendly - separate each parser method to its own file
+
+## Supported langauges
+
+Bellow mentioned language servers were tested.
+
+- C/Cpp: `clangd`
+- Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
+- Java: [`nvim-jdtls`](https://github.com/mfussenegger/nvim-jdtls)
+
+<details><summary>
+
+### Screenshots: `with TS` vs. `reform.nvim`
+
+</summary>
+
+- C/Cpp ![C/Cpp](https://user-images.githubusercontent.com/54900518/212124528-7fa9b0b1-9a2e-4b78-be81-e97ace003836.png)
+- Lua, including Vim-style documentation ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
+- Java ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
+</details>
+
 ## Config
 
 Defaults:
+
 ```lua
 require'reform'.setup { -- values are `boolean` or replacement `function`
-  input = true|fun(),  -- vim.ui.input (used in vim.lsp.buf.rename)
-  select = true|fun(), -- vim.ui.select (used in vim.lsp.buf.code_action)
-  docmd = true|{       -- reform the lsp documentation output
+  docmd = true|{          -- reform the lsp documentation output
     override = {
       convert = true|fun(), -- reform markdown/docs parser - v.l.u.convert_input_to_markdown_lines
       stylize = true|fun(), -- override with enabled treesitter - vim.lsp.util.stylize_markdown
@@ -29,6 +64,10 @@ require'reform'.setup { -- values are `boolean` or replacement `function`
     ft = { -- only boolean values
       c = true, cpp = true, lua = true, java = true
     }
-  }
+  },
+  input = true|fun(),    -- vim.ui.input (used in vim.lsp.buf.rename)
+  select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
 }
 ```
+
+- setup function can be called at any time again to change settings at runtime
