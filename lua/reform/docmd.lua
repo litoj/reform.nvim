@@ -2,12 +2,16 @@ local M = {
 	default = {
 		convert = vim.lsp.util.convert_input_to_markdown_lines,
 		stylize = vim.lsp.util.stylize_markdown,
-		config = {override = {}, ft = {c = true, cpp = true, lua = true, java = true}},
+		config = {
+			override = {convert = true, stylize = true, cmp_doc = true},
+			ft = {c = true, cpp = true, lua = true, java = true},
+		},
 	},
+	override = {},
 	set = {},
 }
 
-function M.default.config.override.convert(doc, contents)
+function M.override.convert(doc, contents)
 	-- vim.api.nvim_echo({{vim.inspect(doc)}}, false, {})
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == "string" or doc.kind == "plaintext" then return vim.split(doc.value or doc, "\n") end
@@ -29,39 +33,17 @@ function M.default.config.override.convert(doc, contents)
 	end
 
 	-- regex fallback that does some basic transformation
-	str = str:gsub("%s+(```\n)", "%1"):gsub("([ \n\t])`([^`\n]+%s[^`\n]+)`%s*",
-			"%1\n```" .. vim.bo.filetype .. "\n%2```\n")
-	if vim.bo.filetype == "java" then
-		str = str:gsub("{(%a+)}", "*`%1`*")
-		local code = false
-		for _, v in ipairs(vim.split(str, "\n")) do
-			if #v > 4 then
-				local _, idx = v:find("^>?    ")
-				if idx and (code or not v:find(" +*", idx + 1)) then
-					v = v:sub(idx + 1)
-					if not code then
-						contents[#contents + 1] = "```java"
-						code = true
-					end
-				elseif code then
-					code = false
-					contents[#contents] = contents[#contents] .. "```"
-				end
-				contents[#contents + 1] = v;
-			end
-		end
-	else
-		return vim.split(str, "\n");
-	end
+	return vim.split(str:gsub("%s+(```\n)", "%1"):gsub("([ \n\t])`([^`\n]+%s[^`\n]+)`%s*",
+			"%1\n```" .. vim.bo.filetype .. "\n%2```\n"), "\n")
 end
 
-function M.default.config.override.stylize(buf, contents, _opts)
+function M.override.stylize(buf, contents, _opts)
 	vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
 	vim.api.nvim_buf_set_lines(buf, 0, 0, false, contents)
 	return contents
 end
 
-function M.default.config.override.cmp_doc(self)
+function M.override.cmp_doc(self)
 	local item = self:get_completion_item()
 	if not item.documentation then return {} end
 	return vim.lsp.util.convert_input_to_markdown_lines(item.documentation)
@@ -96,7 +78,7 @@ return function(config)
 	M.config = vim.tbl_deep_extend("force", M.default.config, config)
 	for k, v in pairs(M.config.override) do
 		if v then
-			M.set[k](v)
+			M.set[k](type(v) == "function" and v or M.override[k])
 		else
 			M.set[k](M.default[k])
 		end

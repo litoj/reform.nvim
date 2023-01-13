@@ -83,7 +83,7 @@ static char *cpp_fmt(const char *doc, char *fmt, int len) {
 	int i = -1, end = len;
 	if (alike(doc + len - 3, "```")) { // move the end (code declaration) to the beginning
 		len -= 6;
-		while (doc[len] != '`') len--;
+		while (doc[len] != '`' || doc[len - 1] != '`' || doc[len - 2] != '`') len--;
 		if (doc[len + 1] == '\n') {
 			len += 2;
 			while (doc[len] != '\n') *fmt++ = doc[len++];
@@ -95,12 +95,12 @@ static char *cpp_fmt(const char *doc, char *fmt, int len) {
 		*fmt++ = '\n';
 		if (alike(doc, "###")) { // strip type defs - already in code block
 			while (doc[++i] != '\n' || doc[++i] == '-' || doc[i] == '\n') {}
-			if (alike(doc + i, "Param")) {
+			if (alike(doc + i, "Param") || alike(doc + i, "Type")) {
 				while (doc[++i] != '\n') {}
 				while (doc[++i] != '\n' || doc[++i] == '-') {}
 			}
-			*fmt++ = '\n';
 			i--;
+			*fmt++ = '\n';
 		}
 	}
 	char kind = 0;
@@ -151,9 +151,9 @@ static char *cpp_fmt(const char *doc, char *fmt, int len) {
 			} break;
 			case '\n':
 				while (fmt[-1] == ' ') fmt--;
+				if (alike(doc + i + 1, "---")) i += 4;
 				if (fmt[-1] == '\n' && kind) {
 					kind = 0;
-					if (doc[i + 1] == '-') i += 4;
 					break;
 				}
 			default:
@@ -197,30 +197,36 @@ static char *java_code_fmt(const char *doc, char *fmt, int *docPos, char type) {
  * @return ptr to current `fmt` position
  */
 static char *java_fmt(const char *doc, char *fmt, int len) {
-	int i = 0;
+	int i = -1;
 	char kind = 0; // type of currently processed list (p = parameter...)
-	fmt = append(fmt, "```java\n");
-	{ // fix TS highlighting (recognize method/class with 'x<y>' `type`)
-		// this cannot fix method identifier highlight, only `type` and `parameter`
-		int j = 2, cont = 0;
-		while (doc[j] && doc[j] != '\n') {
-			switch (doc[j++]) {
-				case '(':                        // will get here only if '<' was found
-					fmt = append(fmt, "default "); // any method keyword for TS to recognize method
-					j = len;
-					break;
-				case '<':
-					cont = 1;
-					break;
-				case ' ':
-					if (!cont) j = len;
-					break;
+	if (!alike(doc, "```java")) {
+		int j = 0;
+		while (doc[j] != '\n') j++;
+		if (doc[j + 1] != '\n') {
+			fmt = append(fmt, "```java\n");
+			// fix TS highlighting (recognize method/class with 'x<y>' `type`)
+			// this cannot fix method identifier highlight, only `type` and `parameter`
+			int j = 2, cont = 0;
+			while (doc[j] && doc[j] != '\n') {
+				switch (doc[j++]) {
+					case '(':                        // will get here only if '<' was found
+						fmt = append(fmt, "default "); // any method keyword for TS to recognize method
+						j = len;
+						break;
+					case '<':
+						cont = 1;
+						break;
+					case ' ':
+						if (!cont) j = len;
+						break;
+				}
 			}
+			if (doc[j - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
+			i = 0;
+			while (doc[i] && doc[i] != '\n') *fmt++ = doc[i++];
+			fmt = append(fmt, "```\n\n");
 		}
-		if (doc[j - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
 	}
-	while (doc[i] && doc[i] != '\n') *fmt++ = doc[i++];
-	fmt = append(fmt, "```\n\n");
 	while (++i < len) {
 		switch (doc[i]) {
 			case '>': // code block '>' delimited: '> code'
@@ -461,8 +467,9 @@ static char *lua_fmt(const char *doc, char *fmt, int len) {
 					fmt = append(lua_code_fmt(doc, append(fmt, "```lua\n"), &i, '`'), "```");
 				} else {
 					*fmt++ = '`';
-					while (doc[++i] != '`') *fmt++ = doc[i];
+					while (doc[++i] != '`' && doc[i] != '\n' && doc[i]) *fmt++ = doc[i];
 					*fmt++ = '`';
+					if (doc[i] != '`') i--;
 				}
 				break;
 			case '<': // code with '<pre>'
@@ -484,9 +491,13 @@ static char *lua_fmt(const char *doc, char *fmt, int len) {
 				} else *fmt++ = '|';
 				break;
 			case '~': // 'See:' links deformed into '~https~ //url'
-				if (alike(doc + i + 1, "https~ ")) {
-					i += 10;
-					fmt = append(fmt, "[https://");
+				if (alike(doc + i + 1, "http") && (doc[i + 5] == '~' || doc[i + 6] == '~')) {
+					if (alike(fmt - 3, " * ")) fmt = append(fmt - 3, "- ");
+					i++;
+					*fmt++ = '[';
+					while (doc[i] != '~') *fmt++ = doc[i++];
+					i += 2;
+					*fmt++ = ':';
 					while (doc[i] != ' ' && doc[i] != '\n' && doc[i]) *fmt++ = doc[i++];
 					i--;
 					*fmt++ = ']';
@@ -587,30 +598,36 @@ static char *lua_fmt(const char *doc, char *fmt, int len) {
 						i += 4;
 					} else i += 2;
 				} else {
+					j = i;
 					while (doc[++i] != ' ') *fmt++ = doc[i];
 					if (doc[i + 1] == -30 && doc[i + 3] == -108) { // —
 						i += 4;
 						*fmt++ = ':';
+						indent[0] = -1;
+						indent[1] = i - j - 2;
 					}
 					*fmt++ = ' ';
 				}
 			} break;
 			case '\n': {
 				if (fmt[-1] == ' ') fmt--;
+				if (fmt[-1] != '\n') *fmt++ = '\n';
 				if (alike(doc + i + 1, "---\n")) i += 4;
 				int j = 1; // get beginning of text on the next line
 				while (doc[i + j] == ' ') j++;
 				if (doc[i + j] == '-' || doc[i + j] == '+' || doc[i + j] == -30) { // param description
 					if (j > 4) {                                                     // 2.nd+ level indent
-						if (indent[0] && indent[0] <= j) i += indent[1];
+						if (indent[0] > 0 && indent[0] <= j) i += indent[1];
 						else i += indent[1] = (indent[0] = j) - 4; // 1.st occurence of 2.nd level indent
 					} else {                                     // back at 1.st level
 						indent[0] = 0;
 						indent[1] = doc[i + j] == -30 ? 3 : 0; // indent only for '   • {param}'
 						if (j == 4) i += j - 2;
 					}
+				} else if (indent[0] == -1 && j > 3) {
+					for (int k = indent[1]; k > 0; k--) *fmt++ = ' ';
+					i += j - 1;
 				} else if (indent[1] < j) i += indent[1]; // wrapped text alignment
-				if (fmt[-1] != '\n') *fmt++ = '\n';
 			} break;
 			default:
 				*fmt++ = doc[i];
@@ -623,24 +640,23 @@ static int l_fmt(lua_State *L) {
 	if (lua_gettop(L) != 2) return 0;
 	size_t len;
 	const char *doc = luaL_checklstring(L, 1, &len);
+	const char *ft = luaL_checkstring(L, 2);
 	while (*doc == '\n' || *doc == ' ') {
 		len--;
 		doc++;
 	}
-	const char *ft = luaL_checkstring(L, 2);
-	char *fmt, *fmtEnd;
-	if (!ft[alike(ft, "cpp")] || (ft[0] == 'c' && ft[1] == 0))
-		fmtEnd = cpp_fmt(doc, fmt = (char *) malloc(len + 50), len);
-	else if (!ft[alike(ft, "java")])
-		fmtEnd = java_fmt(doc, fmt = (char *) malloc(len > 128 ? len + 50 : 256), len);
-	else if (!ft[alike(ft, "lua")]) fmtEnd = lua_fmt(doc, fmt = (char *) malloc(len + 50), len);
-	else {
-		lua_pushstring(L, doc);
-		return 1;
+	void *avail[4][2] = {{"lua", lua_fmt}, {"cpp", cpp_fmt}, {"c", cpp_fmt}, {"java", java_fmt}};
+	for (int i = 0; i < 4; i++) {
+		if (ft[alike(ft, (char *) avail[i][0])] == '\0') {
+			char *fmt = (char *) malloc(len + 50);
+			char *end = ((char *(*) (const char *, char *, int) ) avail[i][1])(doc, fmt, len);
+			while (*end && *--end == '\n') {}
+			*++end = '\0';
+			lua_pushstring(L, realloc(fmt, (end - fmt + 1) * sizeof(char)));
+			return 1;
+		}
 	}
-	while (fmt != fmtEnd && *--fmtEnd == '\n') {}
-	*++fmtEnd = '\0';
-	lua_pushstring(L, realloc(fmt, (fmtEnd - fmt + 1) * sizeof(char)));
+	lua_pushstring(L, doc);
 	return 1;
 }
 
