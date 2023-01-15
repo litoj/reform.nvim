@@ -1,3 +1,7 @@
-.PHONY: docfmt
+DIR = ./src/
+
 docfmt:
-	cd ./lua/reform/docfmt/ && gcc main.c -fPIC -O2 -shared -o main.so
+	cd $(DIR) && make docfmt
+
+%:
+	cd $(DIR) && make $@

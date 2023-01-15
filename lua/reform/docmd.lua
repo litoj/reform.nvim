@@ -29,7 +29,7 @@ function M.override.convert(doc, contents)
 
 	if M.config.ft[vim.bo.filetype] then
 		-- vim.api.nvim_echo({{vim.inspect(str)}}, false, {})
-		return vim.split(require 'reform.docfmt.main'(str, vim.bo.filetype), "\n")
+		return vim.split(require 'reform.docfmt'(str, vim.bo.filetype), "\n")
 	end
 
 	-- regex fallback that does some basic transformation

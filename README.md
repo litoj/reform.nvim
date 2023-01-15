@@ -10,7 +10,7 @@ documentation parser written in `C`, with primitive fallback parser using `lua` 
 use {
   "JosefLitos/reform.nvim",
   config = [[require'reform'.setup()]],
-  run = "make docfmt",
+  run = "make all",
 }
 ```
 
@@ -28,7 +28,6 @@ use {
 - links in documentation window should be clickable
 - error handling to avoid entire nvim crash when parsing incorrect markdown
   - probably should fix lua crash with cmp-nvim-lsp-signature-help
-- more dev friendly - separate each parser method to its own file
 
 ## Supported langauges
 

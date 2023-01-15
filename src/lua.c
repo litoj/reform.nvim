@@ -1,279 +1,4 @@
-#include <lauxlib.h>
-#include <lua.h>
-#include <stdlib.h>
-
-/**
- * @brief Append `str` to `dst`
- *
- * @param dst destination
- * @param str string to append
- * @return ptr to current `dst` position
- */
-static char *append(char *dst, const char *str) {
-	while (*str) *dst++ = *str++;
-	return dst;
-}
-
-/**
- * @brief test if `str` starts with `cmp`
- *
- * @param str tested string
- * @param cmp string to compare against
- * @return length of `cmp` if passed, else `0`
- */
-static int alike(const char *str, const char *cmp) {
-	int j = 0;
-	while (cmp[j] == str[j] && cmp[j] && str[j]) j++;
-	return cmp[j] == '\0' ? j : 0;
-}
-
-/**
- * @brief Parses current doc kind and adds section header when needed.
- *
- * @param doc source docs with original text
- * @param fmt buffer for formatted docs
- * @param docPos ptr to current `doc` index
- * @param fmtPos ptr to current `fmt` index
- * @param kind kind of previous docs line ('@[]..')
- * @return ptr to current `fmt` position
- */
-static char *resolveKind(const char *doc, char *fmt, int *docPos, char *kind) {
-	int i = *docPos;
-	if (*kind != doc[i]) {
-		if (!*kind && doc[i] != 'b') *fmt++ = '\n';
-		const char *section;
-		switch (*kind = doc[i++]) {
-			case 'p':
-				section = "**Parameters:**\n";
-				break;
-			case 'r':
-				section = "**Returns:**\n";
-				break;
-			case 's':
-				section = "**See:**\n";
-				break;
-			case 'b': // '@brief'
-				*kind = 0;
-				section = "";
-				break;
-			default: // '@other' -> '**Other**:\n'
-				*fmt++ = '*';
-				*fmt++ = '*';
-				*fmt++ = doc[i - 1] - 32; // -32 = 'a' -> 'A'
-				while (doc[i] != ' ') *fmt++ = doc[i++];
-				section = "**:\n";
-				break;
-		}
-		fmt = append(fmt, section);
-	}
-	while (doc[i] != ' ') i++;
-	*docPos = i;
-	return fmt;
-}
-
-/**
- * @brief C and CPP doxygen parser
- *
- * @param doc original markdown
- * @param fmt buffer for formatted documentation
- * @param len end of `doc`
- * @return ptr to current `fmt` position
- */
-static char *cpp_fmt(const char *doc, char *fmt, int len) {
-	int i = -1, end = len;
-	if (alike(doc + len - 3, "```")) { // move the end (code declaration) to the beginning
-		len -= 6;
-		while (doc[len] != '`' || doc[len - 1] != '`' || doc[len - 2] != '`') len--;
-		if (doc[len + 1] == '\n') {
-			len += 2;
-			while (doc[len] != '\n') *fmt++ = doc[len++];
-			return fmt;
-		}
-		end = (len -= 2); // end before ```
-		while (doc[len]) *fmt++ = doc[len++];
-		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
-		*fmt++ = '\n';
-		if (alike(doc, "###")) { // strip type defs - already in code block
-			while (doc[++i] != '\n' || doc[++i] == '-' || doc[i] == '\n') {}
-			if (alike(doc + i, "Param") || alike(doc + i, "Type")) {
-				while (doc[++i] != '\n') {}
-				while (doc[++i] != '\n' || doc[++i] == '-') {}
-			}
-			i--;
-			*fmt++ = '\n';
-		}
-	}
-	char kind = 0;
-	while (++i < end) {
-		switch (doc[i]) {
-			case '\\':
-				*fmt++ = doc[i++];
-				*fmt++ = doc[i];
-				break;
-			case '`':
-				if (doc[i + 1] == '`' && doc[i + 2] == '`') {
-					i += 2;
-					fmt = append(fmt, "```");
-					while (doc[i] != '`' || doc[++i] != '`' || doc[++i] != '`') *fmt++ = doc[i++];
-					fmt = append(fmt - 1, "```");
-				} else {
-					*fmt++ = '`';
-					while (doc[i] != '`') *fmt++ = doc[i++];
-					*fmt++ = '`';
-				}
-				break;
-			case -110:  //→
-				fmt -= 2; //→ is a 3-byte char
-				i += 3;
-				while (doc[i] != '\n' || doc[i + 1] != '\n') i++;
-				i++;
-				break;
-			case '@': {
-				int j = 1;
-				while (doc[i + j] >= 'a' && doc[i + j] <= 'z') j++;
-				if (doc[i + j] != ' ') {
-					*fmt++ = '@';
-					break;
-				}
-				if (doc[++i] == 't') i++;
-				fmt = resolveKind(doc, fmt, &i, &kind);
-				if (kind == 'r' || kind == 'p') {
-					fmt = append(fmt, " - ");
-					if (kind == 'p') {
-						*fmt++ = '`';
-						while (doc[++i] != ' ') {
-							if (doc[i] == ',') fmt = append(fmt, "`,`");
-							else *fmt++ = doc[i];
-						}
-						fmt = append(fmt, "`: ");
-					}
-				}
-			} break;
-			case '\n':
-				while (fmt[-1] == ' ') fmt--;
-				if (alike(doc + i + 1, "---")) i += 4;
-				if (fmt[-1] == '\n' && kind) {
-					kind = 0;
-					break;
-				}
-			default:
-				*fmt++ = doc[i];
-		}
-	}
-	return fmt;
-}
-
-/**
- * @brief Format java code from jdtls markdown docs
- *
- * @param doc original markdown
- * @param fmt buffer for formatted documentation
- * @param docStart ref to pos of `doc` parsing
- * @param type '>' or ' '
- * @return ptr to current `fmt` position
- */
-static char *java_code_fmt(const char *doc, char *fmt, int *docPos, char type) {
-	int i = *docPos;
-	fmt = append(fmt - (fmt[-2] == '\n'), "```java\n");
-	int skip = 1;
-	while (doc[i + skip] == ' ') skip++; // strip indent to keep ours' consistent
-	while (1) {
-		*fmt++ = ' '; // add some indent for easier code distinction
-		i += skip;
-		while (doc[i] != '\n') *fmt++ = doc[i++];
-		if (doc[i + 1] != type) break;
-		else *fmt++ = doc[i++];
-	}
-	*docPos = i - 1;
-	return append(fmt, "```");
-}
-
-/**
- * @brief jdtls JavaDoc parser, format code blocks and lists
- *
- * @param doc original markdown
- * @param fmt buffer for formatted documentation
- * @param len end of `doc`
- * @return ptr to current `fmt` position
- */
-static char *java_fmt(const char *doc, char *fmt, int len) {
-	int i = -1;
-	char kind = 0; // type of currently processed list (p = parameter...)
-	if (!alike(doc, "```java")) {
-		int j = 0;
-		while (doc[j] != '\n') j++;
-		if (doc[j + 1] != '\n') {
-			fmt = append(fmt, "```java\n");
-			// fix TS highlighting (recognize method/class with 'x<y>' `type`)
-			// this cannot fix method identifier highlight, only `type` and `parameter`
-			int j = 2, cont = 0;
-			while (doc[j] && doc[j] != '\n') {
-				switch (doc[j++]) {
-					case '(':                        // will get here only if '<' was found
-						fmt = append(fmt, "default "); // any method keyword for TS to recognize method
-						j = len;
-						break;
-					case '<':
-						cont = 1;
-						break;
-					case ' ':
-						if (!cont) j = len;
-						break;
-				}
-			}
-			if (doc[j - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
-			i = 0;
-			while (doc[i] && doc[i] != '\n') *fmt++ = doc[i++];
-			fmt = append(fmt, "```\n\n");
-		}
-	}
-	while (++i < len) {
-		switch (doc[i]) {
-			case '>': // code block '>' delimited: '> code'
-				if (fmt[-1] == '\n' && fmt[-2] == '\n') fmt = java_code_fmt(doc, fmt, &i, '>');
-				else *fmt++ = '>';
-				break;
-			case '\n': {
-				int j = 1;
-				while (doc[i + j] == ' ') j++;
-				// deal with non-lists (probably italics or bold markers)
-				if (!alike(doc + i + j, "*  ")) {
-					// code block 4-space delimited: '    code'
-					if (j == 5 && doc[i + j] != '\n') fmt = java_code_fmt(doc, fmt, &i, ' ');
-					else if (doc[i + j] == '\n' && j > 1) i += j - 1;
-					else *fmt++ = '\n';
-					break;
-				}
-				// change list marker from '*' to '-' and halve the indentation (1 + 2 spaces)
-				if (fmt[-1] != '\n') *fmt++ = '\n';
-				i += j + 2; // skip all indentation + '*  '
-				if (j == 2) {
-					// sections are 1.st level indent as lists
-					if (doc[i + 1] == '*' && doc[i + 2] == '*') {
-						if (!kind) *fmt++ = '\n'; // separate start of first found section
-						kind = doc[i + 3] + 32;   // record current section type
-					} else fmt = append(fmt, " - ");
-				} else {         // add half the identation (we use 2, java 4)
-					j = j / 2 - 2; // -2: indent/list depth <<1; list indent >= 1
-					while (--j > 0) *fmt++ = ' ';
-					fmt = append(fmt, " - ");
-					// params use format: '     *  **param** desc'
-					if (doc[i + 1] == '*' && doc[i + 2] == '*' && kind == 'p') {
-						i += 3;
-						*fmt++ = '`'; // format into our ' - `param`: desc'
-						while (doc[i] != '*') *fmt++ = doc[i++];
-						i++;
-						*fmt++ = '`';
-						*fmt++ = ':';
-					}
-				}
-			} break;
-			default:
-				*fmt++ = doc[i];
-		}
-	}
-	return fmt;
-}
+#include "utils.h"
 
 /**
  * @brief Format lua code from sumneko_lua markdown docs
@@ -379,11 +104,18 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 							case 7:
 								fmt = append(fmt, "fun(");
 								break;
-							default: // other
-								while (doc[i] != '|' && doc[i] != ',' && doc[i] != ')' && doc[i] != '\n') {
+							default: { // other
+								char *fmtTmp = fmt;
+								while (doc[i] != '|' && doc[i] != ',' && doc[i] != ')' && doc[i] != '\n' &&
+								       doc[i] != ' ') {
 									if (doc[i] != '`') *fmt++ = doc[i];
 									i++;
 								}
+								if (doc[i + 1] == '=') {
+									i += 3;
+									fmt = fmtTmp;
+								}
+							}
 						}
 						if (len) {
 							i += len;
@@ -422,15 +154,7 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 	return fmt;
 }
 
-/**
- * @brief lua + vim-style docs parser
- *
- * @param doc original markdown
- * @param fmt buffer for formatted documentation
- * @param len end of `doc`
- * @return ptr to current `fmt` position
- */
-static char *lua_fmt(const char *doc, char *fmt, int len) {
+char *lua_fmt(const char *doc, char *fmt, int len) {
 	int i = 0;
 	if (alike(doc, "```lua\n")) {
 		fmt = append(fmt, "```lua\n");
@@ -558,7 +282,7 @@ static char *lua_fmt(const char *doc, char *fmt, int len) {
 					}
 				} else {
 					char *fmtTmp = fmt - 1;
-					while (*fmtTmp >= 'a' && *fmtTmp <= 'z' || *fmtTmp == '_') fmtTmp--;
+					while ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_') fmtTmp--;
 					if (*fmtTmp >= 'A' && *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
 					    (fmtTmp[-1] == '\n' || alike(fmtTmp - 2, "\n "))) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
@@ -634,35 +358,4 @@ static char *lua_fmt(const char *doc, char *fmt, int len) {
 		}
 	}
 	return fmt;
-}
-
-static int l_fmt(lua_State *L) {
-	if (lua_gettop(L) != 2) return 0;
-	size_t len;
-	const char *doc = luaL_checklstring(L, 1, &len);
-	const char *ft = luaL_checkstring(L, 2);
-	while (*doc == '\n' || *doc == ' ') {
-		len--;
-		doc++;
-	}
-	void *avail[4][2] = {{"lua", lua_fmt}, {"cpp", cpp_fmt}, {"c", cpp_fmt}, {"java", java_fmt}};
-	for (int i = 0; i < 4; i++) {
-		if (ft[alike(ft, (char *) avail[i][0])] == '\0') {
-			char *fmt = (char *) malloc(len + 50);
-			char *end = ((char *(*) (const char *, char *, int) ) avail[i][1])(doc, fmt, len);
-			while (*end && *--end == '\n') {}
-			*++end = '\0';
-			lua_pushstring(L, realloc(fmt, (end - fmt + 1) * sizeof(char)));
-			return 1;
-		}
-	}
-	lua_pushstring(L, doc);
-	return 1;
-}
-
-int luaopen_reform_docfmt_main(lua_State *L) {
-	// lua_newtable(L);
-	lua_pushcfunction(L, l_fmt);
-	// lua_setfield(L, -2, "fmt");
-	return 1;
 }
