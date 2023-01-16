@@ -5,7 +5,7 @@ char *append(char *dst, const char *str) {
 
 int alike(const char *str, const char *cmp) {
 	int j = 0;
-	while (cmp[j] == str[j] && cmp[j] && str[j]) j++;
+	while (cmp[j] == str[j] && cmp[j]) j++;
 	return cmp[j] == '\0' ? j : 0;
 }
 
