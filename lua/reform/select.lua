@@ -60,4 +60,5 @@ return function(config)
 	else
 		vim.ui.select = M.default
 	end
+	return M
 end

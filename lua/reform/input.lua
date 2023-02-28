@@ -37,4 +37,5 @@ return function(config)
 	else
 		vim.ui.input = M.default
 	end
+	return M
 end

@@ -51,20 +51,25 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 					fmt = append(fmt, " end");
 				}
 				break;
-			case '>':
+			case '>': {
 				*fmt++ = '>';
-				if (fmt[-2] != '-') break;
+				if (fmt[-2] != '-' || doc[i + 1] != ' ') break;
 				int j = 0;
 				while (doc[i + j] != ':' && doc[i + j] != '\n') j++;
 				if (doc[i + j] == ':') break;
-				fmt = append(fmt, " ret");
+				fmt = append(fmt," ret =");
+			}
 			case ':':
 				if (doc[i + 1] == '\n') {
 					i += 2;
 					while (doc[i] != '|') i++;
 				}
 				if (doc[i + 1] == ' ') {
-					fmt = append(fmt, " = ");
+					if (doc[i] == ':') {
+						*fmt++ = ' ';
+						*fmt++ = '=';
+					}
+					*fmt++ = ' ';
 					i += 2;
 					const char *types[] = {"any",     "string",   "table",   "number",
 					                       "unknown", "function", "boolean", "fun("};
@@ -227,7 +232,7 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 					*fmt++ = ']';
 				} else *fmt++ = '~';
 				break;
-			case -94: { //• - vim docs
+			case -94: { // • - vim docs
 				i += 2;
 				fmt = append(fmt - 2, "- ");
 				if (doc[i] == '{') {

@@ -83,4 +83,5 @@ return function(config)
 			M.set[k](M.default[k])
 		end
 	end
+	return M
 end

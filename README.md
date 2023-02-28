@@ -4,7 +4,20 @@ Documentation should be informative, concise, and easy to read.
 Reform the looks of lsp documentation and possibly a few ui elements with a unifying
 documentation parser written in `C`, with primitive fallback parser using `lua` EREs.
 
-## Installation - [`packer`](https://github.com/wbthomason/packer.nvim)
+## Installation
+
+### [`lazy.nvim`](https://github.com/folke/lazy.nvim)
+
+```lua
+return {
+  "JosefLitos/reform.nvim",
+  event = "VeryLazy",
+  build = "make all",
+  config = true -- automatically call reform.setup(), use [opts] to customize passed table
+}
+```
+
+### [`packer.nvim`](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
@@ -21,11 +34,11 @@ use {
 - identical look across different languages (including vim docs in lua)
 - as fast as possible - formatted with a single readthrough, written in `C`
 - customizable - all functions can be replaced by your own
+- any link in markdown format is clickable (see `open_link` bellow)
 
 ### Planned
 
 - support more languages
-- links in documentation window should be clickable
 - error handling to avoid entire nvim crash when parsing incorrect markdown
   - probably should fix lua crash with cmp-nvim-lsp-signature-help
 
@@ -66,6 +79,11 @@ require'reform'.setup { -- values are `boolean` or replacement `function`
   },
   input = true|fun(),    -- vim.ui.input (used in vim.lsp.buf.rename)
   select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
+  open_link = true|{     -- keymappings to open markdown link under cursor
+  -- NOTE: 'file://' uri paths rely on [urlencode](https://github.com/AquilaIrreale/urlencode)
+    {{"", "i"}, "<C-LeftMouse>"},
+    {"n", "gl"}
+  }
 }
 ```
 
