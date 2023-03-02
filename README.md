@@ -66,7 +66,7 @@ Bellow mentioned language servers were tested.
 Defaults:
 
 ```lua
-require'reform'.setup { -- values are `boolean` or replacement `function`
+require'reform'.setup {
   docmd = true|{          -- reform the lsp documentation output
     override = {
       convert = true|fun(), -- reform markdown/docs parser - v.l.u.convert_input_to_markdown_lines
@@ -80,11 +80,11 @@ require'reform'.setup { -- values are `boolean` or replacement `function`
   input = true|fun(),    -- vim.ui.input (used in vim.lsp.buf.rename)
   select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
   open_link = true|{     -- keymappings to open markdown link  (clicked or under cursor)
-  -- NOTE: 'file://' uri paths rely on [urlencode](https://github.com/AquilaIrreale/urlencode)
     {{"", "i"}, "<C-LeftMouse>"},
     {"n", "gl"}
   }
 }
 ```
 
+- **NOTE:** clicking on `file://` links relies on [urlencode](https://github.com/AquilaIrreale/urlencode)
 - setup function can be called at any time again to change settings at runtime
