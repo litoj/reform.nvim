@@ -79,7 +79,7 @@ require'reform'.setup { -- values are `boolean` or replacement `function`
   },
   input = true|fun(),    -- vim.ui.input (used in vim.lsp.buf.rename)
   select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
-  open_link = true|{     -- keymappings to open markdown link under cursor
+  open_link = true|{     -- keymappings to open markdown link  (clicked or under cursor)
   -- NOTE: 'file://' uri paths rely on [urlencode](https://github.com/AquilaIrreale/urlencode)
     {{"", "i"}, "<C-LeftMouse>"},
     {"n", "gl"}

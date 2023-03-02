@@ -57,7 +57,7 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 				int j = 0;
 				while (doc[i + j] != ':' && doc[i + j] != '\n') j++;
 				if (doc[i + j] == ':') break;
-				fmt = append(fmt," ret =");
+				fmt = append(fmt, " ret =");
 			}
 			case ':':
 				if (doc[i + 1] == '\n') {
@@ -151,6 +151,11 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 					*docStart = i + 5;
 					while (*--fmt == '\n' || *fmt == ' ') {}
 					return fmt + 1;
+				}
+			case '-':
+				if (doc[i + 1] == '-') {
+					while (doc[i] != '\n') *fmt++ = doc[i++];
+					*fmt++ = '\n';
 				}
 			default:
 				*fmt++ = doc[i];
