@@ -12,7 +12,7 @@ documentation parser written in `C`, with primitive fallback parser using `lua` 
 return {
   "JosefLitos/reform.nvim",
   event = "VeryLazy",
-  build = "make all",
+  build = "make",
   config = true -- automatically call reform.setup(), use [opts] to customize passed table
 }
 ```

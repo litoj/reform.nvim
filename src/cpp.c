@@ -1,6 +1,6 @@
 #include "utils.h"
 
-char *cpp_fmt(const char *doc, char *fmt, int len) {
+char* cpp_fmt(const char* doc, char* fmt, int len) {
 	int i = -1, end = len;
 	if (alike(doc + len - 3, "```")) { // move the end (code declaration) to the beginning
 		len -= 6;
@@ -39,12 +39,12 @@ char *cpp_fmt(const char *doc, char *fmt, int len) {
 					fmt = append(fmt - 1, "```");
 				} else {
 					*fmt++ = '`';
-					while (doc[i] != '`') *fmt++ = doc[i++];
+					while (doc[++i] != '`') *fmt++ = doc[i];
 					*fmt++ = '`';
 				}
 				break;
-			case -110:  //→
-				fmt -= 2; //→ is a 3-byte char
+			case -110:  // →
+				fmt -= 2; // → is a 3-byte char
 				i += 3;
 				while (doc[i] != '\n' || doc[i + 1] != '\n') i++;
 				i++;
@@ -64,7 +64,7 @@ char *cpp_fmt(const char *doc, char *fmt, int len) {
 						*fmt++ = '`';
 						while (doc[++i] != ' ') {
 							if (doc[i] == ',') fmt = append(fmt, "`,`");
-							else *fmt++ = doc[i];
+							else if (doc[i] != '\\') *fmt++ = doc[i];
 						}
 						fmt = append(fmt, "`: ");
 					}

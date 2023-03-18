@@ -6,36 +6,55 @@
 #include <lua.h>
 #include <stdlib.h>
 
-static int l_fmt(lua_State *L) {
+static int l_fmt(lua_State* L) {
 	if (lua_gettop(L) != 2) return 0;
 	size_t len;
-	const char *doc = luaL_checklstring(L, 1, &len);
-	const char *ft = luaL_checkstring(L, 2);
+	const char* doc = luaL_checklstring(L, 1, &len);
+	const char* ft = luaL_checkstring(L, 2);
 	while (*doc == '\n' || *doc == ' ') {
 		len--;
 		doc++;
 	}
 	struct {
-		char *ft;
-		char *(*parser)(const char *, char *, int);
+		const char* ft;
+		char* (*parser)(const char*, char*, int);
 	} avail[4] = {{"lua", lua_fmt}, {"cpp", cpp_fmt}, {"c", cpp_fmt}, {"java", java_fmt}};
 	for (int i = 0; i < 4; i++) {
-		if (ft[alike(ft, avail[i].ft)] == '\0') {
-			char *fmt = (char *) malloc(len + 50);
-			char *end = avail[i].parser(doc, fmt, len);
-			while (*end && *--end == '\n') {}
+		if (!ft[alike(ft, avail[i].ft)]) {
+			char* fmt = (char*) malloc(len + 50);
+			char* end = avail[i].parser(doc, fmt, len);
+
+			if (end > fmt)
+				while (*--end == '\n') {}
+			*++end = '\n';
 			*++end = '\0';
-			lua_pushstring(L, realloc(fmt, (end - fmt + 1) * sizeof(char)));
+			fmt = (char*) realloc(fmt, (end - fmt + 1) * sizeof(char));
+
+			const char* ptr = fmt;
+			lua_newtable(L);
+			for (int j = 1; *fmt; j++, ptr = fmt) {
+				while (*fmt != '\n') fmt++;
+				*fmt++ = '\0';
+				lua_pushstring(L, ptr);
+				lua_rawseti(L, -2, j);
+			}
 			return 1;
 		}
 	}
-	lua_pushstring(L, doc);
+
+	char* fmt = (char*) malloc(len + 1);
+	const char *end = doc + len, *ptr = fmt;
+	lua_newtable(L);
+	for (int j = 1; doc < end; j++, ptr = fmt, doc++) {
+		while (*doc != '\n' && *doc) *fmt++ = *doc++;
+		*fmt++ = '\0';
+		lua_pushstring(L, ptr);
+		lua_rawseti(L, -2, j);
+	}
 	return 1;
 }
 
-int luaopen_reform_docfmt(lua_State *L) {
-	// lua_newtable(L);
+int luaopen_reform_docfmt(lua_State* L) {
 	lua_pushcfunction(L, l_fmt);
-	// lua_setfield(L, -2, "fmt");
 	return 1;
 }

@@ -4,7 +4,8 @@ CC = gcc
 CFLAGS = -O2 -fPIC -pedantic -Wall
 LDFLAGS = -shared
 
-SRC = $(shell echo *.c)
+HEAD = $(shell echo *.h)
+SRC = $(HEAD:.h=.c)
 OBJ = $(SRC:.c=.o)
 TARGET = ../lua/reform/docfmt.so
 
@@ -12,9 +13,13 @@ docfmt: $(TARGET)
 
 all: clean $(TARGET)
 
-clean:
-	rm -f $(OBJ) $(TARGET) || echo
+debug: $(OBJ)
+	$(CC) $(CFLAGS) -g -fsanitize=address,leak -o debug.out debug.c $(OBJ)
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) $(OBJ)
+
+clean:
+	rm -f docfmt.o debug.out $(OBJ) $(TARGET) || echo
+
+$(TARGET): $(OBJ) docfmt.o
+	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) docfmt.o $(OBJ)
 
