@@ -27,24 +27,15 @@ char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
 				section = "**See:**\n";
 				*kind = doc[i++];
 				break;
+			case 't':
+				section = "**Throws:**\n";
+				*kind = doc[i++];
+				break;
 			case 'b': // '@brief'
+				section = "";
 				*kind = 0;
 				i++;
-				section = "";
 				break;
-			case 'a':
-				if (doc[i + 1] == ' ') {
-					i += 2;
-					*fmt++ = '`';
-					while ((doc[i] >= '0' && doc[i] <= '9') || (doc[i] >= 'A' && doc[i] <= ']') ||
-					       (doc[i] >= 'a' && doc[i] <= 'z')) {
-						if (doc[i] == '\\') i++;
-						*fmt++ = doc[i++];
-					}
-					*fmt++ = '`';
-					section = "";
-					break;
-				}
 			default: // '@other' -> '**Other**:\n'
 				*fmt++ = '*';
 				*fmt++ = '*';
