@@ -2,7 +2,7 @@
 local M = {default = {{{"", "i"}, "<C-LeftMouse>"}, {"n", "gl"}}, handlers = {}}
 function M.handlers.open_link(line, col)
 	local hover = { -- using array to keep order of testing
-		{"%[.-%]%((http[^)]-)%)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
+		{"%[.-%]%((https?://[^)]-)%)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
 		{
 			"%[.-%]%(file://([^)]-)%)",
 			function(file)
@@ -14,6 +14,7 @@ function M.handlers.open_link(line, col)
 		{"%[.-%]%(([^)]-)%)", vim.cmd.e},
 		{"%[([^%] ]-)%][^(%]]", vim.cmd.help},
 		{"|([^% ]]-)|", vim.cmd.help},
+		{"(https?://[^ \t()[%]{}]+)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
 	}
 
 	for _, data in ipairs(hover) do
