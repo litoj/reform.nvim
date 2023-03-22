@@ -15,6 +15,7 @@ function M.handlers.open_link(line, col)
 		{"%[([^%] ]-)%][^(%]]", vim.cmd.help},
 		{"|([^% ]]-)|", vim.cmd.help},
 		{"(https?://[^ \t()[%]{}]+)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
+		{"(~?[A-Z0-9a-z._-]*/[/A-Z0-9a-z._-]*)", vim.cmd.e},
 	}
 
 	for _, data in ipairs(hover) do
