@@ -57,28 +57,16 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 					break;
 				}
 				i++;
-				if (doc[i] == 'a' && j == 2) {
-					i += 2;
-					*fmt++ = '`';
-					while ((doc[i] >= '0' && doc[i] <= '9') || (doc[i] >= 'A' && doc[i] <= ']') ||
-					       (doc[i] >= 'a' && doc[i] <= 'z')) {
-						if (doc[i] == '\\') i++;
-						*fmt++ = doc[i++];
-					}
-					*fmt++ = '`';
-					*fmt++ = doc[i];
-				} else {
-					fmt = resolveKind(doc, fmt, &i, &kind);
-					if (kind == 'r' || kind == 'p' || kind == 't') {
-						fmt = append(fmt, " - ");
-						if (kind != 'r') {
-							*fmt++ = '`';
-							while (doc[++i] != ' ') {
-								if (doc[i] == ',') fmt = append(fmt, "`,`");
-								else if (doc[i] != '\\') *fmt++ = doc[i];
-							}
-							fmt = append(fmt, "`: ");
+				fmt = resolveKind(doc, fmt, &i, &kind);
+				if (kind == 'r' || kind == 'p' || kind == 't') {
+					fmt = append(fmt, " - ");
+					if (kind != 'r') {
+						*fmt++ = '`';
+						while (doc[++i] > ' ') {
+							if (doc[i] == ',') fmt = append(fmt, "`,`");
+							else if (doc[i] != '\\') *fmt++ = doc[i];
 						}
+						fmt = append(fmt, "`: ");
 					}
 				}
 			} break;
