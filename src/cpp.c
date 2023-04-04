@@ -11,6 +11,8 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 			return fmt;
 		}
 		end = (len -= 2); // end before ```
+		fmt = append(fmt, "```cpp");
+		while (doc[len] != '\n') len++;
 		while (doc[len]) *fmt++ = doc[len++];
 		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
 		*fmt++ = '\n';
@@ -34,7 +36,8 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 			case '`':
 				if (doc[i + 1] == '`' && doc[i + 2] == '`') {
 					i += 2;
-					fmt = append(fmt, "```");
+					fmt = append(fmt, "```cpp");
+					while (doc[i] != '\n') i++;
 					while (doc[i] != '`' || doc[++i] != '`' || doc[++i] != '`') *fmt++ = doc[i++];
 					fmt = append(fmt - 1, "```");
 				} else {
