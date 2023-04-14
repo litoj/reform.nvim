@@ -11,7 +11,7 @@ local M = {
 	set = {},
 }
 
-function M.override.convert(doc, contents)
+function M.override.convert(doc, _contents)
 	-- vim.api.nvim_echo({{vim.inspect(doc)}}, false, {})
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == "string" or doc.kind == "plaintext" then return vim.split(doc.value or doc, "\n") end

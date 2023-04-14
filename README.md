@@ -77,7 +77,6 @@ require'reform'.setup {
       c = true, cpp = true, lua = true, java = true
     }
   },
-  input = true|fun(),    -- vim.ui.input (used in vim.lsp.buf.rename)
   select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
   open_link = true|{     -- keymappings to open markdown link  (clicked or under cursor)
     {{"", "i"}, "<C-LeftMouse>"},

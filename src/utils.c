@@ -12,8 +12,8 @@ int alike(const char* str, const char* cmp) {
 char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
 	int i = *docPos;
 	if (*kind != doc[i]) {
-		if (!*kind && doc[i] != 'b') *fmt++ = '\n';
 		if (doc[i + 1] != ' ') {
+			if (!*kind && doc[i] != 'b') *fmt++ = '\n';
 			const char* section;
 			switch (doc[i]) {
 				case 'p':
@@ -54,6 +54,7 @@ char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
 				else if (doc[i] != '\\') *fmt++ = doc[i];
 			}
 			*fmt++ = '`';
+			*fmt++ = doc[i];
 		}
 	}
 	while (doc[i] != ' ') i++;

@@ -9,7 +9,7 @@
  * @param stop '`' or 'p' for <pre> code blocks
  * @return ptr to current `fmt` position
  */
-static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) {
+static char* lua_code_fmt(const char* doc, char* fmt, int* docStart, char stop) {
 	int i = *docStart;
 	*fmt++ = doc[i];
 	unsigned char params = 0;
@@ -37,7 +37,7 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 			case '(':
 				// check for "function "
 				if (fmt[-1] != ' ' || (fmt[-2] == 'n' && fmt[-9] == 'f')) {
-					char *fmtTmp = fmt - 1;
+					char* fmtTmp = fmt - 1;
 					while (*fmtTmp != '\n' && *fmtTmp != ' ') fmtTmp--;
 					if (*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction")) {
 						if (fmt[-1] == ' ') *fmt++ = '_';
@@ -73,12 +73,12 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 					}
 					*fmt++ = ' ';
 					i += 2;
-					const char *types[] = {"any",     "string",   "table",   "number",
-					                       "unknown", "function", "boolean", "fun("};
+					const char* types[] = {"any", "string", "table", "number", "unknown", "function",
+					  "boolean", "fun(", "integer"};
 					do {
 						if (doc[i] == ' ') i++;
 						int type = 0, len = 0;
-						for (; type < 8; type++, len = 0)
+						for (; type < 9; type++, len = 0)
 							if ((len = alike(doc + i, types[type]))) break;
 						if (doc[i + len] == '[') *fmt++ = '{'; // array start
 						switch (type) {
@@ -111,10 +111,13 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 							case 7:
 								fmt = append(fmt, "fun(");
 								break;
+							case 8:
+								*fmt++ = '0';
+								break;
 							default: { // other
-								char *fmtTmp = fmt;
+								char* fmtTmp = fmt;
 								while (doc[i] != '|' && doc[i] != ',' && doc[i] != ')' && doc[i] != '\n' &&
-								       doc[i] != ' ') {
+								  doc[i] != ' ') {
 									if (doc[i] != '`') *fmt++ = doc[i];
 									i++;
 								}
@@ -166,7 +169,7 @@ static char *lua_code_fmt(const char *doc, char *fmt, int *docStart, char stop) 
 	return fmt;
 }
 
-char *lua_fmt(const char *doc, char *fmt, int len) {
+char* lua_fmt(const char* doc, char* fmt, int len) {
 	int i = 0;
 	if (alike(doc, "```lua\n")) {
 		fmt = append(fmt, "```lua\n");
@@ -217,7 +220,7 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 				break;
 			case '|': // vim help-page-style links '|text|'
 				if (doc[i + 1] != ' ') {
-					char *fmtTmp = fmt;
+					char* fmtTmp = fmt;
 					*fmt++ = '[';
 					while (doc[++i] != '|' && doc[i] != ' ' && doc[i] != '\n') *fmt++ = doc[i];
 					if (doc[i] != '|') {
@@ -261,7 +264,7 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 				}
 			} break;
 			case '{': { // vim references to params as '{param}'
-				const char *docTmp = doc + i;
+				const char* docTmp = doc + i;
 				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
 				if (*docTmp == ' ') *fmt++ = '{';
 				else {
@@ -293,10 +296,10 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 						i--;
 					}
 				} else {
-					char *fmtTmp = fmt - 1;
+					char* fmtTmp = fmt - 1;
 					while ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_') fmtTmp--;
 					if (*fmtTmp >= 'A' && *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
-					    (fmtTmp[-1] == '\n' || alike(fmtTmp - 2, "\n "))) {
+					  (fmtTmp[-1] == '\n' || alike(fmtTmp - 2, "\n "))) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 						*++fmtTmp = '*';
 						*++fmtTmp = '*';

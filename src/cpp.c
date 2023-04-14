@@ -60,6 +60,7 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 					break;
 				}
 				i++;
+				if (doc[i] == 't' && doc[i + 1] == 'p') i++;
 				fmt = resolveKind(doc, fmt, &i, &kind);
 				if (kind == 'r' || kind == 'p' || kind == 't') {
 					fmt = append(fmt, " - ");
