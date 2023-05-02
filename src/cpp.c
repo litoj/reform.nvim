@@ -15,7 +15,7 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 		while (doc[len] != '\n') len++;
 		while (doc[len]) *fmt++ = doc[len++];
 		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
-		*fmt++ = '\n';
+		*fmt++  = '\n';
 		if (alike(doc, "###")) { // strip type defs - already in code block
 			while (doc[++i] != '\n' || doc[++i] == '-' || doc[i] == '\n') {}
 			if (alike(doc + i, "Param") || alike(doc + i, "Type")) {
@@ -58,6 +58,13 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 				if (doc[i + j] != ' ') {
 					*fmt++ = '@';
 					break;
+				} else if (j == 2) {
+					*fmt++ = '`';
+					i+=2;
+					while (doc[++i] > 47) *fmt++ = doc[doc[i] == '\\' ? ++i : i];
+					*fmt++ = '`';
+					*fmt++ = doc[i];
+					break;
 				}
 				i++;
 				if (doc[i] == 't' && doc[i + 1] == 'p') i++;
@@ -66,11 +73,12 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 					fmt = append(fmt, " - ");
 					if (kind != 'r') {
 						*fmt++ = '`';
-						while (doc[++i] > ' ') {
-							if (doc[i] == ',') fmt = append(fmt, "`,`");
-							else if (doc[i] != '\\') *fmt++ = doc[i];
-						}
-						fmt = append(fmt, "`: ");
+						while (doc[++i] > 47) *fmt++ = doc[doc[i] == '\\' ? ++i : i];
+						if (fmt[-1] == ',') {
+							fmt[-1] = '`';
+							*fmt++  = ',';
+							i--;
+						} else fmt = append(fmt, "`: ");
 					}
 				}
 			} break;

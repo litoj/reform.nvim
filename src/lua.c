@@ -10,8 +10,8 @@
  * @return ptr to current `fmt` position
  */
 static char* lua_code_fmt(const char* doc, char* fmt, int* docStart, char stop) {
-	int i = *docStart;
-	*fmt++ = doc[i];
+	int i                = *docStart;
+	*fmt++               = doc[i];
 	unsigned char params = 0;
 	while (doc[++i]) {
 		switch (doc[i]) {
@@ -50,7 +50,7 @@ static char* lua_code_fmt(const char* doc, char* fmt, int* docStart, char stop) 
 				*fmt++ = ')';
 				if (params) {
 					params = 0;
-					fmt = append(fmt, " end");
+					fmt    = append(fmt, " end");
 				}
 				break;
 			case '>': {
@@ -191,9 +191,17 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 		*fmt++ = doc[i];
 	}
 	int indent[] = {0, 0}; // [0] = base, [1] = last noted
-	char kind = 0;
+	char kind    = 0;
 	while (++i < len) {
 		switch (doc[i]) {
+			case '[':
+				if (doc[i + 1] == ' ') *fmt++ = '\\';
+				*fmt++ = '[';
+				break;
+			case ']':
+				if (fmt[-1] == ' ') *fmt++ = '\\';
+				*fmt++ = ']';
+				break;
 			case '\\':
 				*fmt++ = doc[i++];
 				*fmt++ = doc[i];
@@ -221,7 +229,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			case '|': // vim help-page-style links '|text|'
 				if (doc[i + 1] != ' ') {
 					char* fmtTmp = fmt;
-					*fmt++ = '[';
+					*fmt++       = '[';
 					while (doc[++i] != '|' && doc[i] != ' ' && doc[i] != '\n') *fmt++ = doc[i];
 					if (doc[i] != '|') {
 						*fmtTmp = '|';
@@ -250,9 +258,12 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					while (doc[++i] != '}') *fmt++ = doc[i];
 					*fmt++ = '`';
 					*fmt++ = ':';
+				} else if (doc[i] == '|') {
+					i--;
+					break;
 				} else {
 					int j = i;
-					while (doc[j] != ':' && doc[j] != ' ') j++;
+					while (doc[j] > 32 && doc[j] != ':') j++;
 					if (doc[j] == ':' || doc[j + 1] == ':') *fmt++ = '`';
 					while (i < j) *fmt++ = doc[i++];
 					if (doc[j] == ':') *fmt++ = '`';
@@ -260,7 +271,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 						*fmt++ = '`';
 						i++;
 					}
-					*fmt++ = doc[i];
+					if (i < len) *fmt++ = doc[i];
 				}
 			} break;
 			case '{': { // vim references to params as '{param}'
@@ -269,7 +280,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				if (*docTmp == ' ') *fmt++ = '{';
 				else {
 					fmt[doc + i - docTmp] = '`';
-					*fmt++ = '`';
+					*fmt++                = '`';
 				}
 				i = docTmp - doc;
 			} break;
@@ -290,9 +301,11 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					if (kind == 'P') i += 2;
 					else {
 						i += 3;
-						if (kind == 'R') fmt = append(fmt, "\n - ");
-						else *fmt++ = ' ';
-						while (doc[++i] == ' ') {}
+						*fmt++ = '\n';
+						if (kind == 'R') {
+							fmt = append(fmt, " - ");
+							while (doc[++i] == ' ') {}
+						} else *fmt++ = ' ';
 						i--;
 					}
 				} else {
@@ -303,16 +316,16 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 						*++fmtTmp = '*';
 						*++fmtTmp = '*';
-						fmt = append(fmt + 2, ":**");
+						fmt       = append(fmt + 2, ":**");
 						break;
 					} else if (*fmtTmp == ' ' || *fmtTmp == '\n') { // any other mi-line 'text:'
 						for (int m = fmt - fmtTmp; m; m--) fmtTmp[m + 1] = fmtTmp[m];
 						if (fmtTmp[-1] == '-') { // '- name: desc' -> '- `name`: desc'
 							*++fmtTmp = '`';
-							*++fmt = '`';
+							*++fmt    = '`';
 						} else { // 'other:' -> '*other*:'
 							*++fmtTmp = '*';
-							*++fmt = '*';
+							*++fmt    = '*';
 						}
 						fmt++;
 					}
@@ -320,7 +333,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': { // format: '@*param* `name` — desc'
-				int j = 2;
+				int j     = 2;
 				indent[0] = 0;
 				indent[1] = 3;
 				while (doc[i + j] >= 'a' && doc[i + j] <= 'z') j++; // must be a word
@@ -341,7 +354,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					while (doc[++i] != ' ') *fmt++ = doc[i];
 					if (doc[i + 1] == -30 && doc[i + 3] == -108) { // —
 						i += 4;
-						*fmt++ = ':';
+						*fmt++    = ':';
 						indent[0] = -1;
 						indent[1] = i - j - 2;
 					}

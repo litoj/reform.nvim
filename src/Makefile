@@ -1,8 +1,8 @@
 .PHONY: all clean docfmt
 
 CC = gcc
-CFLAGS = -O2 -fPIC -pedantic -Wall
-LDFLAGS = -shared
+CFLAGS = -O3 -pedantic -Wall
+LDFLAGS = -fPIC -shared
 
 HEAD = $(shell echo *.h)
 SRC = $(HEAD:.h=.c)
@@ -13,12 +13,13 @@ docfmt: $(TARGET)
 
 all: clean $(TARGET)
 
+debug: CFLAGS=-pedantic -Wall -g -fsanitize=address,leak
 debug: $(OBJ)
-	$(CC) $(CFLAGS) -g -fsanitize=address,leak -o debug.out debug.c $(OBJ)
+	$(CC) $(CFLAGS) -o main.out debug.c $(OBJ)
 
 
 clean:
-	rm -f docfmt.o debug.out $(OBJ) $(TARGET) || echo
+	rm -f docfmt.o main.out $(OBJ) || echo
 
 $(TARGET): $(OBJ) docfmt.o
 	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) docfmt.o $(OBJ)
