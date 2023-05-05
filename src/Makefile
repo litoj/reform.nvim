@@ -1,15 +1,18 @@
 .PHONY: all clean docfmt
 
-CC = gcc
-CFLAGS = -O3 -pedantic -Wall
-LDFLAGS = -fPIC -shared
+CC=gcc
+CFLAGS=-O3 -pedantic -Wall
+LDFLAGS=-fPIC -shared
 
-HEAD = $(shell echo *.h)
-SRC = $(HEAD:.h=.c)
-OBJ = $(SRC:.c=.o)
-TARGET = ../lua/reform/docfmt.so
+HEAD=$(shell echo *.h)
+SRC=$(HEAD:.h=.c)
+OBJ=$(SRC:.c=.o)
+TARGET=../lua/reform/docfmt.so
 
 docfmt: $(TARGET)
+
+$(TARGET): $(OBJ) docfmt.o
+	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) docfmt.o $(OBJ)
 
 all: clean $(TARGET)
 
@@ -21,6 +24,4 @@ debug: $(OBJ)
 clean:
 	rm -f docfmt.o main.out $(OBJ) || echo
 
-$(TARGET): $(OBJ) docfmt.o
-	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) docfmt.o $(OBJ)
 

@@ -23,7 +23,7 @@ return {
 use {
   "JosefLitos/reform.nvim",
   config = [[require'reform'.setup()]],
-  run = "make all",
+  run = "make",
 }
 ```
 
@@ -71,7 +71,8 @@ require'reform'.setup {
     override = {
       convert = true|fun(), -- reform markdown/docs parser - v.l.u.convert_input_to_markdown_lines
       stylize = true|fun(), -- override with enabled treesitter - vim.lsp.util.stylize_markdown
-      cmp_doc = true|fun(), -- replace cmp docs function - require'cmp.entry'.get_documentation
+      cmp_doc = true|fun(), -- reform cmp docs function - require'cmp.entry'.get_documentation
+      cmp_sig = true|fun(), -- reform cmp-nvim-lsp-signature-help formatting function to format MD
     },
     ft = { -- only boolean values
       c = true, cpp = true, lua = true, java = true

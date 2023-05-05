@@ -3,7 +3,7 @@ local M = {
 		convert = vim.lsp.util.convert_input_to_markdown_lines,
 		stylize = vim.lsp.util.stylize_markdown,
 		config = {
-			override = {convert = true, stylize = true, cmp_doc = true},
+			override = {convert = true, stylize = true, cmp_doc = true, cmp_sig = true},
 			ft = {c = true, cpp = true, lua = true, java = true},
 		},
 	},
@@ -49,21 +49,44 @@ function M.override.cmp_doc(self)
 	return vim.lsp.util.convert_input_to_markdown_lines(item.documentation)
 end
 
+function M.override.cmp_sig(self, sig, idx)
+	local docs = {}
+	-- signature label.
+	if sig.label then
+		table.insert(docs, table.concat(
+				vim.lsp.util.convert_input_to_markdown_lines(self:_signature_label(sig, idx)), "\n"))
+	end
+	-- parameter docs.
+	local parameter = sig.parameters[idx]
+	if parameter then
+		if parameter.documentation then
+			table.insert(docs, table.concat(
+					vim.lsp.util.convert_input_to_markdown_lines(parameter.documentation), "\n"))
+		end
+	end
+	-- signature docs.
+	if sig.documentation then
+		table.insert(docs,
+				table.concat(vim.lsp.util.convert_input_to_markdown_lines(sig.documentation), "\n"))
+	end
+
+	return {kind = 'markdown', value = table.concat(docs, '\n\n')}
+end
+
 function M.set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end
 function M.set.stylize(fn) vim.lsp.util.stylize_markdown = fn end
-function M.set.cmp_doc(fn)
-	if package.loaded["cmp.entry"] then
-		M.default.cmp_doc = package.loaded["cmp.entry"].get_documentation
-		package.loaded["cmp.entry"].get_documentation = fn or M.default.cmp_doc
+
+local function onLoad(pkg, fn)
+	if package.loaded[pkg] then
+		fn(package.loaded[pkg])
 	else
-		package.preload["cmp.entry"] = function()
-			package.preload["cmp.entry"] = nil
+		package.preload[pkg] = function()
+			package.preload[pkg] = nil
 			for _, loader in pairs(package.loaders) do
-				local ret = loader("cmp.entry")
+				local ret = loader(pkg)
 				if type(ret) == "function" then
 					local mod = ret()
-					M.default.cmp_doc = mod.get_documentation
-					mod.get_documentation = fn or M.default.cmp_doc
+					fn(mod)
 					return mod
 				end
 			end
@@ -71,9 +94,23 @@ function M.set.cmp_doc(fn)
 	end
 end
 
+function M.set.cmp_doc(fn)
+	onLoad("cmp.entry", function(pkg)
+		M.default.cmp_doc = pkg.get_documentation
+		pkg.get_documentation = fn or M.default.cmp_doc
+	end)
+end
+function M.set.cmp_sig(fn)
+	onLoad("cmp_nvim_lsp_signature_help", function(pkg)
+		M.default.cmp_sig = pkg._docs
+		pkg._docs = fn or M.default.cmp_sig
+	end)
+end
+
 return function(config)
 	if type(config) == "boolean" then
-		config = config and {} or {override = {convert = false, stylize = false, cmp_doc = false}}
+		config = config and {} or
+				         {override = {convert = false, stylize = false, cmp_doc = false, cmp_sig = false}}
 	end
 	M.config = vim.tbl_deep_extend("force", M.default.config, config)
 	for k, v in pairs(M.config.override) do
