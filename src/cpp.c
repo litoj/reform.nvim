@@ -52,6 +52,15 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 				while (doc[i] != '\n' || doc[i + 1] != '\n') i++;
 				i++;
 				break;
+			case '%':
+				if (doc[i - 1] != ' ') *fmt++ = '%';
+				else {
+					*fmt++ = '*';
+					while (doc[++i] > ' ') *fmt++ = doc[i];
+					i--;
+					*fmt++ = '*';
+				}
+				break;
 			case '@': {
 				int j = 1;
 				while (doc[i + j] >= 'a' && doc[i + j] <= 'z') j++;
@@ -60,7 +69,7 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 					break;
 				} else if (j == 2) {
 					*fmt++ = '`';
-					i+=2;
+					i += 2;
 					while (doc[++i] > 47) *fmt++ = doc[doc[i] == '\\' ? ++i : i];
 					*fmt++ = '`';
 					*fmt++ = doc[i];
