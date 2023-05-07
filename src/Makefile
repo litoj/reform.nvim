@@ -1,7 +1,8 @@
 .PHONY: all clean docfmt
 
+MAKEFLAGS+=-j4
 CC=gcc
-CFLAGS=-O3 -pedantic -Wall
+CFLAGS+=-O3
 LDFLAGS=-fPIC -shared
 
 HEAD=$(shell echo *.h)
@@ -22,6 +23,6 @@ debug: $(OBJ)
 
 
 clean:
-	rm -f docfmt.o main.out $(OBJ) || echo
+	@rm -f *.o main.out $(TARGER)
 
 

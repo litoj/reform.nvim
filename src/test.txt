@@ -1,4 +1,0 @@
-@brief a %shared_ptr @a \_\_p.  
-@param \_\_p a elem_type\*.  
-@post use_count() == 1 && get() == \_\_p  
-@throw std::bad_alloc, ... @c delete @a \_\_p is called.

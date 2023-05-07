@@ -1,8 +1,8 @@
 # reform.nvim
 
 Documentation should be informative, concise, and easy to read.
-Reform the looks of lsp documentation and possibly a few ui elements with a unifying
-documentation parser written in `C`, with primitive fallback parser using `lua` EREs.
+Reform the looks of your lsp documentation with a fast single-pass parser written in `C` and
+further enhance your experience by enabling clickable links (fully customizable).
 
 ## Installation
 
@@ -29,22 +29,19 @@ use {
 
 ## Goals
 
-### Featured
+### Features
 
-- identical look across different languages (including vim docs in lua)
-- as fast as possible - formatted with a single readthrough, written in `C`
-- customizable - all functions can be replaced by your own
-- any link in markdown format is clickable (see `open_link` bellow)
-
-### Planned
-
-- support more languages
-- error handling to avoid entire nvim crash when parsing incorrect markdown
-  - probably should fix lua crash with cmp-nvim-lsp-signature-help
+- [x] identical look across different languages (including vim docs in lua)
+- [x] as fast as possible - formatted on a single pass, written in `C`
+- [x] fully customizable - all functions can be replaced by your own
+- [x] links should be clickable like in any other IDE (see `open_link` bellow)
+- [ ] support more languages (Rust, go, js...)
+- [ ] better parser error handling (mostly doesn't occur) to avoid entire nvim crash
+- [x] supports cmp-nvim-lsp-signature-help - has to replace internal method to inject formatting
 
 ## Supported langauges
 
-Bellow mentioned language servers were tested.
+Language servers bellow were tested.
 
 - C/Cpp: `clangd`
 - Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
