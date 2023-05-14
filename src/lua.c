@@ -1,7 +1,47 @@
 #include "utils.h"
 
+/**
+ * @brief Append lua string to @p fmtPtr.
+ *
+ * @param doc source string
+ * @param fmtPtr ptr to dst output position
+ * @param docPos ptr to source string position
+ */
+static void add_string(const char* doc, char** fmtPtr, int* docPos) {
+	int i     = *docPos;
+	char* fmt = *fmtPtr;
+	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
+	while (doc[i] == ' ' || doc[i] == '\n') i++;
+	*fmt++ = doc[i];
+	switch (doc[i]) {
+		case '"': // string "..."
+			while (doc[++i] >= ' ' && doc[i] != '"') {
+				if (doc[i] == '\\') *fmt++ = doc[i++];
+				*fmt++ = doc[i];
+			}
+			break;
+		case '\'': // string '...'
+			while (doc[++i] >= ' ' && doc[i] != '\'') {
+				if (doc[i] == '\\') *fmt++ = doc[i++];
+				*fmt++ = doc[i];
+			}
+			break;
+		case '[': // string [[...]]
+			if (doc[i + 1] != '[') return;
+			while (doc[++i] && (doc[i] != ']' || doc[i + 1] != ']')) {
+				if (doc[i] == '\\') *fmt++ = doc[i++];
+				*fmt++ = doc[i];
+			}
+			*fmt++ = doc[i++];
+			break;
+	}
+	*fmt++  = doc[i];
+	*fmtPtr = fmt;
+	*docPos = i;
+}
+
 static const char* types[] = {"float", "number", "integer", "string", "any", "unknown", "table",
-  "[", "boolean", "function", "fun("};
+  "[", "boolean", "function", "fun(", "<", "dictionary"};
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -13,17 +53,17 @@ static const char* types[] = {"float", "number", "integer", "string", "any", "un
 static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
 	int i     = *docPos;
 	char* fmt = *fmtPtr;
+	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	do {
 		if (doc[i] == '|') *fmt++ = doc[i++];
-		if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
-		if (doc[i] <= ' ')
-			while (doc[i] <= ' ') i++;
-		char mdMod = doc[i] == '`';
-		if (mdMod) i++;
+		while (doc[i] <= ' ') i++;
+		char backTicks = doc[i] == '`';
+		if (backTicks) i++;
 		int type = 0, len = 0;
-		for (; type < 11; type++, len = 0)
+		for (; type < 13; type++, len = 0)
 			if ((len = alike(doc + i, types[type]))) break;
-		if (doc[i += len] == '[') *fmt++ = '{';
+		i += len;
+		if (doc[i] == '[') *fmt++ = '{';
 		switch (type) {
 			case 0: // float
 				*fmt++ = '0';
@@ -36,8 +76,11 @@ static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
 				*fmt++ = '.';
 				break;
 			case 3: // string
-				if (doc[i + 1] == '=') i += 3;
-				else {
+				if (doc[i + 1] == '=') {
+					i += 2;
+					add_string(doc, &fmt, &i);
+					while (doc[++i] && doc[i] <= ' ') {}
+				} else {
 					*fmt++ = '"';
 					*fmt++ = '"';
 				}
@@ -55,7 +98,7 @@ static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
 							if ((len = alike(doc + i, types[type]))) break;
 						if (type < 4 && doc[i + len] != '|') {
 							i += len;
-							if (type == 3) fmt = append(fmt, "val ="); // string index -> it's a map
+							if (type == 3) fmt = append(fmt, "val ="); // string index -> it's a map/dictionary
 						} else {
 							*fmt++ = '['; // indexing with a more compicated type
 							lua_type_fmt(doc, &fmt, &i);
@@ -117,6 +160,20 @@ static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
 					lua_type_fmt(doc, &fmt, &i);
 				}
 				break;
+			case 11: // generics
+				*fmt++ = '<';
+				while (('A' <= doc[i] && doc[i] <= 'Z') || ('0' <= doc[i] && doc[i] <= '9'))
+					*fmt++ = doc[i++];
+				if (doc[i] == ':') {
+					*fmt++ = '.';
+					i++;
+					lua_type_fmt(doc, &fmt, &i);
+				}
+				*fmt++ = doc[i++];
+				break;
+			case 12: // dictionary
+				fmt = append(fmt, "{val = \"\"}");
+				break;
 			default: { // unknown type / value (nil, ...)
 				char* fmtTmp = fmt;
 				while (('a' <= doc[i] && doc[i] <= 'z') || doc[i] == '_' || doc[i] == '.' ||
@@ -132,7 +189,7 @@ static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
 			*fmt++ = '}';
 			i += 2;
 		}
-		if (mdMod && doc[i] == '`') {
+		if (backTicks && doc[i] == '`') {
 			i++;
 			while (doc[i] == ' ' || doc[i] == '\n') i++;
 		}
@@ -148,33 +205,23 @@ static void lua_type_fmt(const char* doc, char** fmtPtr, int* docPos) {
  * @param doc source string
  * @param fmtPtr ptr to formatted output position
  * @param docPos ptr to source string position
- * @param stop '`' or 'p' for <pre> code blocks
+ * @param stop code-ending sequence
  */
-static void lua_code_fmt(const char* doc, char** fmtPtr, int* docPos, char stop) {
+static void lua_code_fmt(const char* doc, char** fmtPtr, int* docPos, const char* stop) {
 	char* fmt  = *fmtPtr;
 	int i      = *docPos;
 	*fmt++     = doc[i];
 	int params = 0;
-	while (doc[++i]) {
+	while (!alike(doc + ++i, stop)) {
 		switch (doc[i]) {
-			case '"': // string "..."
-				*fmt++ = doc[i];
-				while (doc[++i] != '"' && doc[i] != '\n') *fmt++ = doc[i];
-				if (doc[i] == '\n') i--;
-				else *fmt++ = doc[i];
-				break;
-			case '\'': // string '...'
-				*fmt++ = doc[i];
-				while (doc[++i] != '\'' && doc[i] != '\n') *fmt++ = doc[i];
-				if (doc[i] == '\n') i--;
-				else *fmt++ = doc[i];
-				break;
 			case '[': // string [[...]]
-				*fmt++ = doc[i];
-				if (doc[i + 1] != '[') break;
-				while (doc[++i] != ']' || doc[i + 1] != ']') *fmt++ = doc[i];
-				*fmt++ = doc[i++];
-				*fmt++ = doc[i];
+				if (doc[i + 1] != '[') {
+					*fmt++ = '[';
+					break;
+				}
+			case '"':  // string "..."
+			case '\'': // string '...'
+				add_string(doc, &fmt, &i);
 				break;
 			case '(':
 				// check for "function "
@@ -195,14 +242,17 @@ static void lua_code_fmt(const char* doc, char** fmtPtr, int* docPos, char stop)
 					fmt    = append(fmt, " end");
 				}
 				break;
-			case '>': { // return type
-				*fmt++ = '>';
-				if (fmt[-2] != '-' || doc[i + 1] != ' ') break;
-				int j = 0;
-				while (doc[i + j] != ':' && doc[i + j] != '\n') j++;
-				if (doc[i + j] == ':') break;
-				fmt = append(fmt, " ret");
-			}
+			case '>': // return type
+				if (fmt[-1] != '-' || doc[i + 1] != ' ') {
+					*fmt++ = '>';
+					break;
+				}
+				fmt = append(fmt - 1 - (fmt[-2] == ' '), "return ");
+				i++;
+				if (doc[i] == ':') i++;
+				lua_type_fmt(doc, &fmt, &i);
+				i--;
+				break;
 			case ':': // type
 				if (doc[i + 1] == '\n') {
 					i += 2;
@@ -216,24 +266,19 @@ static void lua_code_fmt(const char* doc, char** fmtPtr, int* docPos, char stop)
 					i--;
 				} else *fmt++ = doc[i];
 				break;
+			case '.':
+				*fmt++ = '.';
+				if (doc[i + 1] != '.' || doc[i + 2] != '.') break;
+				*fmt++ = '.';
+				*fmt++ = '.';
+				i += 3;
+				lua_type_fmt(doc, &fmt, &i);
+				i--;
+				break;
 			case '\\':
 				*fmt++ = '\\';
 				*fmt++ = doc[++i];
 				break;
-			case '`':
-				if (stop == '`' && doc[i + 1] == '`' && doc[i + 2] == '`') {
-					*docPos = i + 2;
-					while (*--fmt <= ' ') {}
-					fmt++;
-				} else *fmt++ = doc[i];
-				break;
-			case '<':
-				if (stop == 'p' && alike(doc + i + 1, "/pre>")) {
-					*docPos = i + 5;
-					while (*--fmt <= ' ') {}
-					fmt++;
-					break;
-				}
 			case '-':
 				if (doc[i + 1] == '-') {
 					while (doc[i] != '\n') *fmt++ = doc[i++];
@@ -270,9 +315,16 @@ static void lua_param_fmt(const char* doc, char** fmtPtr, int* docPos) {
 		while (doc[++i] != '"') *fmt++ = doc[i];
 		*fmt++ = '"';
 		*fmt++ = '*';
+		if (doc[++i] == ':') {
+			**fmtPtr = '`';
+			fmt[-1]  = '`';
+			*fmt++   = ':';
+			i++;
+		}
 	} else {
 
 		if (doc[i] == '{') i++;
+		if ('A' <= doc[i] && doc[i] <= 'Z') return;
 		*fmt++ = '`';
 		while (('a' <= doc[i] && doc[i] <= 'z') || doc[i] == '_' || doc[i] == '.' ||
 		  ('A' <= doc[i] && doc[i] <= 'Z') || ('0' <= doc[i] && doc[i] <= '9') || doc[i] == '\\') {
@@ -280,22 +332,47 @@ static void lua_param_fmt(const char* doc, char** fmtPtr, int* docPos) {
 			*fmt++ = doc[i++];
 		}
 		*fmt++ = '`';
-		if (doc[i] == '}') i++;
-		else if (doc[i] == ':' ? doc[i + 1] != ' ' : doc[i] != ' ' || doc[i + 1] != '(')
+		int ok = doc[i] == '}' || doc[i] == ':';
+		if (doc[i] == '}') i += doc[i + 2] == ' ' ? 2 : 1;
+		else if (ok ? doc[i + 1] != ' ' : doc[i] != ' ' || doc[i + 1] != '(')
 			return; // it's not a param
 
+		if (doc[i] == ':') {
+			i++;
+			ok = 2;
+		}
 		if (doc[i] == ' ' && doc[i + 1] == '(') { // contains type info
-			fmt = append(fmt, " = *`");
-			i += 2;
-			lua_type_fmt(doc, &fmt, &i);
-			if (doc[i++] != ')' || (doc[i] != ':' && doc[i] > '\n'))
-				return; // it's not type info of a param
-			*fmt++ = '`';
-			*fmt++ = '*';
+			if (ok) {
+				*fmtPtr = fmt;
+				*docPos = i;
+			}
+			if (alike(doc + i + 2, "optional)")) {
+				if (!ok) ok = 1;
+				i += 11;
+				*fmt++ = '?';
+			} else {
+				fmt = append(fmt, " (`");
+				i += 2;
+				lua_type_fmt(doc, &fmt, &i);
+				*fmt++ = '`';
+				*fmt++ = ')';
+				if (doc[i++] != ')' || (doc[i] > ' ' && doc[i] != ':')) {
+					if (ok) *(*fmtPtr)++ = ':'; // param without type info
+					return;
+				}
+				if (doc[i] == ':') {
+					i++;
+					ok = 2;
+				}
+				if (ok > 1 ? alike(doc + i, " (optional)") : alike(doc + i, " optional")) {
+					i += ok > 1 ? 11 : 10;
+					*fmt++ = '?';
+				} else if (!ok && doc[i] != '\n') return;
+			}
 		} else if (doc[i - 1] == '}') i++;
 
-		*fmt++ = ':';
 		if (doc[i] == ':') i++;
+		*fmt++ = ':';
 	}
 
 	*fmtPtr = fmt;
@@ -314,11 +391,13 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					break;
 			} // other: '(field)'
 			i += 5;
-			while (doc[i++] != ' ') {}
+			while (doc[i++] > ' ') {}
 		}
-		lua_code_fmt(doc, &fmt, &i, '`');
-		fmt = append(fmt, "\n```");
-		if (!doc[i]) return fmt - 2;
+		lua_code_fmt(doc, &fmt, &i, "```");
+		i += 3;
+		while (*--fmt <= ' ') {}
+		fmt = append(fmt + 1, "\n```\n");
+		if (!doc[i]) return fmt - 1;
 	} else {
 		while (doc[i] != '\n' && doc[i]) *fmt++ = doc[i++];
 		*fmt++ = doc[i];
@@ -340,45 +419,31 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				*fmt++ = doc[i];
 				break;
 			case '`': // code with '```'
-				if (doc[i + 1] == '`' && doc[i + 2] == '`') {
-
-					while (*--fmt != '\n') {}
-					fmt = append(fmt + 1, "```");
-					if (doc[i += 3] != '\n')
-						while (doc[i] != '\n') *fmt++ = doc[i++];
-					else fmt = append(fmt, "lua");
-					*fmt++ = doc[i++];
-					if (alike(fmt - 4, "lua")) lua_code_fmt(doc, &fmt, &i, '`');
-					else {
-						while (!alike(doc + i, "```")) *fmt++ = doc[i++];
-						i += 3;
-					}
-					fmt = append(fmt, "\n```");
-
-				} else {
+				if (doc[i + 1] != '`' || doc[i + 2] != '`') {
 					*fmt++ = '`';
-					while (doc[++i] != '`' && doc[i] != '\n' && doc[i]) *fmt++ = doc[i];
+					while (doc[++i] && doc[i] != '`') *fmt++ = doc[i];
 					*fmt++ = '`';
 					if (doc[i] != '`') i--;
+					break;
 				}
-				break;
 			case '<': // code with '<pre>'
-				if (alike(doc + i + 1, "pre>")) {
-
+				if (doc[i] != '`' && !alike(doc + i + 1, "pre>")) *fmt++ = doc[i];
+				else {
+					const char* end = doc[i] == '`' ? "```" : "</pre>";
 					while (*--fmt != '\n') {}
 					fmt = append(fmt + 1, "```");
-					if (doc[i += 5] != '\n')
+					if (doc[i += (doc[i] == '`' ? 3 : 5)] != '\n')
 						while (doc[i] != '\n') *fmt++ = doc[i++];
 					else fmt = append(fmt, "lua");
 					*fmt++ = doc[i++];
-					if (alike(fmt - 4, "lua")) lua_code_fmt(doc, &fmt, &i, 'p');
-					else {
-						while (!alike(doc + i, "</pre>")) *fmt++ = doc[i++];
-						i += 5;
-					}
-					fmt = append(fmt, "\n```");
-
-				} else *fmt++ = doc[i];
+					if (alike(fmt - 4, "lua")) lua_code_fmt(doc, &fmt, &i, end);
+					else
+						while (!alike(doc + i, end)) *fmt++ = doc[i++];
+					while (*--fmt <= ' ') {}
+					fmt++;
+					i += end[0] == '`' ? 3 : 5;
+					fmt = append(fmt, "\n```\n");
+				}
 				break;
 			case '|': // vim help-page-style links '|text|'
 				if (doc[i + 1] != ' ') {
@@ -407,7 +472,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			case '{': {
 				const char* docTmp = doc + i;
 				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
-				if (*docTmp <= ' ') *fmt++ = *docTmp;
+				if (*docTmp <= ' ' || docTmp - doc - i == 1) *fmt++ = *docTmp;
 				else { // vim references to params as '{param}'
 					fmt[doc + i - docTmp] = '`';
 					*fmt++                = '`';
@@ -417,15 +482,15 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			case ':':
 				if (alike(doc + i + 1, " ~\n")) { // vim sections ' Section: ~'
 					int j = 0;
-					while (fmt[-j] != '\n') j++; // can crash if section is the first recorded word (never)
-					j -= 2;
-					fmt[-j - 1] = '*';
-					if (fmt[-j - 3] == '\n') fmt[-j - 2] = '*';
+					while (fmt[j] != '\n') j--;
+					j += 2;
+					fmt[j - 1] = '*';
+					if (fmt[j - 3] == '\n') fmt[j - 2] = '*';
 					else {
-						for (int m = 0; m <= j; m++) fmt[-m] = fmt[-m - 1];
+						for (int m = 0; m >= j; m--) fmt[m] = fmt[m - 1];
 						fmt++;
 					}
-					char kind = fmt[-j];
+					char kind = fmt[j];
 					if (kind == 'R') *fmt++ = 's'; // 'Return*s*:'
 					fmt = append(fmt, ":**");
 					if (kind == 'P') i += 2;
@@ -453,14 +518,15 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': { // format: '@*param* `name` — desc'
-				int j     = 2;
 				indent[0] = 0;
 				indent[1] = 3;
-				while (doc[i + j] >= 'a' && doc[i + j] <= 'z') j++; // must be a word
-				if (doc[i + j] != '*' || doc[i + 1] != '*' || doc[i + j + 1] != ' ') {
+				int j     = i + 2;
+				while (doc[j] >= 'a' && doc[j] <= 'z') j++; // must be a word
+				if (doc[j] != '*' || doc[i + 1] != '*' || doc[j + 1] != ' ') {
 					*fmt++ = '@';
 					break;
 				}
+				j -= i;
 				i += 2;
 				fmt = resolveKind(doc, fmt, &i, &kind);
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
@@ -499,7 +565,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 						if (j == 4) i += j - 2;
 					}
 					while (doc[++i] == ' ') *fmt++ = ' ';
-					lua_param_fmt(doc, &fmt, &i);
+					lua_param_fmt(doc, &fmt, &i); // format param entry
 					i--;
 				} else if (indent[0] == -1 && j > 3) {
 					for (int k = indent[1]; k > 0; k--) *fmt++ = ' ';

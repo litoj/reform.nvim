@@ -6,7 +6,7 @@ char* append(char* dst, const char* str) {
 int alike(const char* str, const char* cmp) {
 	int j = 0;
 	while (cmp[j] && cmp[j] == str[j]) j++;
-	return cmp[j] == '\0' ? j : 0;
+	return cmp[j] ? -!str[j] : j;
 }
 
 char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {

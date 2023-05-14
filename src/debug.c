@@ -13,12 +13,12 @@ int main(int argc, char* argv[]) {
 	}
 	size_t len = 0;
 	if (argc < 3) {
-		doc = (char*) malloc(32768);
-		char* bfr = doc;
+		doc         = (char*) malloc(32768);
+		char* bfr   = doc;
 		size_t size = 0;
 		while ((size = fread_unlocked(bfr += size, 1, sizeof(bfr), stdin)) > 0) {}
-		len = bfr - doc + size;
-		doc[len]='\0';
+		len      = bfr - doc + size;
+		doc[len] = '\0';
 	} else {
 		doc = argv[2];
 		while (doc[++len]) {}
@@ -40,11 +40,9 @@ int main(int argc, char* argv[]) {
 			printf("\033[34morigin\033[91m: \033[32mlen\033[31m=\033[95m%ld\033[0m\n%s\n", len, doc);
 			len = end - fmt + 1;
 			fmt = (char*) realloc(fmt, len * sizeof(char));
-			printf("\033[34mresult\033[91m: "
-			       "\033[32mlen\033[31m=\033[95m%ld\n\033[0m%s\033[91m------------\033[0m\n",
-			  len, fmt);
+			printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 
-			char* start = fmt;
+			char* start     = fmt;
 			const char* ptr = fmt;
 			for (int j = 1; *fmt; j++, ptr = fmt) {
 				while (*fmt != '\n') fmt++;
