@@ -24,10 +24,6 @@ int main(int argc, char* argv[]) {
 		while (doc[++len]) {}
 	}
 	const char* ft = argv[1];
-	while (*doc == '\n' || *doc == ' ') {
-		len--;
-		doc++;
-	}
 	struct {
 		const char* ft;
 		char* (*parser)(const char*, char*, int);
