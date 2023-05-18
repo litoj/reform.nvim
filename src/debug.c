@@ -29,7 +29,8 @@ int main(int argc, char* argv[]) {
 		char* (*parser)(const char*, char*, int);
 	} avail[4] = {{"lua", lua_fmt}, {"cpp", cpp_fmt}, {"c", cpp_fmt}, {"java", java_fmt}};
 	for (int i = 0; i < 4; i++) {
-		if (!ft[alike(ft, avail[i].ft)]) {
+		int match = alike(ft, avail[i].ft);
+		if (match > 0 && !ft[match]) {
 			char* fmt = (char*) malloc(len + 50);
 			char* end = avail[i].parser(doc, fmt, len);
 
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
 			*++end = '\0';
 			printf("\033[34morigin\033[91m: \033[32mlen\033[31m=\033[95m%ld\033[0m\n%s\n", len, doc);
 			len = end - fmt + 1;
-			fmt = (char*) realloc(fmt, len * sizeof(char));
+			fmt = (char*) realloc(fmt, len);
 			printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 
 			char* start     = fmt;

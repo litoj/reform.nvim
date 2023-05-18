@@ -2,7 +2,7 @@
 
 char* cpp_fmt(const char* doc, char* fmt, int len) {
 	int i = -1, end = len;
-	if (alike(doc + len - 3, "```")) { // move the end (code declaration) to the beginning
+	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
 		len -= 6;
 		while (doc[len] != '`' || doc[len - 1] != '`' || doc[len - 2] != '`') len--;
 		if (doc[len + 1] == '\n') {
@@ -16,9 +16,9 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 		while (doc[len]) *fmt++ = doc[len++];
 		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
 		*fmt++  = '\n';
-		if (alike(doc, "###")) { // strip type defs - already in code block
+		if (alike(doc, "###") > 0) { // strip type defs - already in code block
 			while (doc[++i] != '\n' || doc[++i] == '-' || doc[i] == '\n') {}
-			if (alike(doc + i, "Param") || alike(doc + i, "Type")) {
+			if (alike(doc + i, "Param") > 0 || alike(doc + i, "Type") > 0) {
 				while (doc[++i] != '\n') {}
 				while (doc[++i] != '\n' || doc[++i] == '-') {}
 			}
@@ -93,7 +93,7 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 			} break;
 			case '\n':
 				while (fmt[-1] == ' ') fmt--;
-				if (alike(doc + i + 1, "---")) i += 4;
+				if (alike(doc + i + 1, "---") > 0) i += 4;
 				if (fmt[-1] == '\n' && kind) {
 					kind = 0;
 					break;

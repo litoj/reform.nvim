@@ -9,9 +9,9 @@
  * @param type '>' or ' '
  * @return ptr to current `fmt` position
  */
-static char *java_code_fmt(const char *doc, char *fmt, int *docPos, char type) {
-	int i = *docPos;
-	fmt = append(fmt - (fmt[-2] == '\n'), "```java\n");
+static char* java_code_fmt(const char* doc, char* fmt, int* docPos, char type) {
+	int i    = *docPos;
+	fmt      = append(fmt - (fmt[-2] == '\n'), "```java\n");
 	int skip = 1;
 	while (doc[i + skip] == ' ') skip++; // strip indent to keep ours' consistent
 	while (1) {
@@ -25,8 +25,8 @@ static char *java_code_fmt(const char *doc, char *fmt, int *docPos, char type) {
 	return append(fmt, "```");
 }
 
-char *java_fmt(const char *doc, char *fmt, int len) {
-	int i = -1;
+char* java_fmt(const char* doc, char* fmt, int len) {
+	int i     = -1;
 	char kind = 0; // type of currently processed list (p = parameter...)
 	if (!alike(doc, "```java")) {
 		int j = 0;
@@ -40,7 +40,7 @@ char *java_fmt(const char *doc, char *fmt, int len) {
 				switch (doc[j++]) {
 					case '(':                        // will get here only if '<' was found
 						fmt = append(fmt, "default "); // any method keyword for TS to recognize method
-						j = len;
+						j   = len;
 						break;
 					case '<':
 						cont = 1;
@@ -68,7 +68,7 @@ char *java_fmt(const char *doc, char *fmt, int len) {
 				// deal with non-lists (probably italics or bold markers)
 				if (!alike(doc + i + j, "*  ")) {
 					// code block 4-space delimited: '    code'
-					if (j == 5 && doc[i + j] != '\n') fmt = java_code_fmt(doc, fmt, &i, ' ');
+					if (j == 5 && doc[i + j] >= ' ') fmt = java_code_fmt(doc, fmt, &i, ' ');
 					else if (doc[i + j] == '\n' && j > 1) i += j - 1;
 					else *fmt++ = '\n';
 					break;

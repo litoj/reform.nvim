@@ -12,7 +12,6 @@ local M = {
 }
 
 function M.override.convert(doc, _contents)
-	-- vim.api.nvim_echo({{vim.inspect(doc)}}, false, {})
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == "string" or doc.kind == "plaintext" then return vim.split(doc.value or doc, "\n") end
 	local str = doc.value
@@ -53,24 +52,17 @@ function M.override.cmp_sig(self, sig, idx)
 	local docs = {}
 	-- signature label.
 	if sig.label then
-		table.insert(docs, table.concat(
-				vim.lsp.util.convert_input_to_markdown_lines(self:_signature_label(sig, idx)), "\n"))
+		docs[1] = "```lua\n" ..
+				          table.concat(
+						vim.lsp.util.convert_input_to_markdown_lines(self:_signature_label(sig, idx)), "\n") .. "```"
 	end
 	-- parameter docs.
-	local parameter = sig.parameters[idx]
-	if parameter then
-		if parameter.documentation then
-			table.insert(docs, table.concat(
-					vim.lsp.util.convert_input_to_markdown_lines(parameter.documentation), "\n"))
-		end
-	end
+	local param = sig.parameters[idx]
+	if param then if param.documentation then docs[#docs + 1] = param.documentation.value end end
 	-- signature docs.
-	if sig.documentation then
-		table.insert(docs,
-				table.concat(vim.lsp.util.convert_input_to_markdown_lines(sig.documentation), "\n"))
-	end
+	if sig.documentation then docs[#docs + 1] = sig.documentation.value end
 
-	return {kind = 'markdown', value = table.concat(docs, '\n\n')}
+	return {kind = 'markdown', value = table.concat(docs, "\n\n")}
 end
 
 function M.set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end

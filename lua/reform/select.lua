@@ -1,10 +1,17 @@
-local M = {default = vim.ui.select}
+local M = {
+	default = vim.ui.select,
+	config = {
+		title_pos = "center",
+		title_fmt = {{"[", "FloatBorder"}, {"", "FloatTitle"}, {"]", "FloatBorder"}},
+	},
+}
 
 function M.override(items, opts, on_choice)
 	opts.prompt = opts.prompt and opts.prompt:gsub(": *$", "") or "Select one of"
 	opts.format_item = opts.format_item or tostring
 	local callback
 	local buf = vim.api.nvim_create_buf(false, true)
+	vim.bo[buf].filetype = "ui-select"
 	local width = #opts.prompt
 	local lines = {}
 	for i, item in ipairs(items) do
@@ -16,8 +23,14 @@ function M.override(items, opts, on_choice)
 	vim.bo[buf].modifiable = false
 	vim.cmd.stopinsert()
 
-	local win = require'reform.util'.mkWin(buf, {row = 1, col = -2, width = width, height = #items},
-			opts.prompt)
+	local win = require'reform.util'.mkWin(buf, {
+		row = 1,
+		col = -2,
+		width = width,
+		height = #items,
+		title = M.config.title_fmt,
+		title_pos = M.config.title_pos,
+	}, opts.prompt)
 	vim.api.nvim_win_set_cursor(win, {1, 1})
 	vim.api.nvim_create_autocmd("CursorMoved", {
 		buffer = buf,
@@ -56,7 +69,12 @@ end
 
 return function(config)
 	if config then
-		vim.ui.select = type(config) == "function" and config or M.override
+		if type(config) == "function" then
+			vim.ui.select = config
+		else
+			vim.ui.select = M.override
+			if type(config) == "table" then M.config = vim.tbl_deep_extend("force", M.config, config) end
+		end
 	else
 		vim.ui.select = M.default
 	end

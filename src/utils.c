@@ -6,7 +6,7 @@ char* append(char* dst, const char* str) {
 int alike(const char* str, const char* cmp) {
 	int j = 0;
 	while (cmp[j] && cmp[j] == str[j]) j++;
-	return cmp[j] ? -!str[j] : j;
+	return cmp[j] ? 0 : j;
 }
 
 char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
@@ -32,14 +32,14 @@ char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
 		*fmt++ = '*';
 		*fmt++ = '*';
 		*fmt++ = *kind = doc[i++] - 32; // -32 = 'a' -> 'A'
-		while (doc[i] != ' ') *fmt++ = doc[i++];
+		while (doc[i] > ' ') *fmt++ = doc[i++];
 		*docPos = i;
 		return append(fmt, "**: ");
 	}
 	if (*kind != doc[i]) fmt = append(fmt, section);
 	*kind = doc[i];
 	i += skip;
-	while (doc[i] != ' ') i++;
+	while (doc[i] > ' ') i++;
 	*docPos = i;
 	return fmt;
 }

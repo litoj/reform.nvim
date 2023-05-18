@@ -73,13 +73,20 @@ require'reform'.setup {
     },
     ft = { -- only boolean values
       c = true, cpp = true, lua = true, java = true
-    }
+    },
   },
-  select = true|fun(),   -- vim.ui.select (used in vim.lsp.buf.code_action)
-  open_link = true|{     -- keymappings to open markdown link  (clicked or under cursor)
+  input = true|fun()|{},  -- vim.ui.input (used in vim.lsp.buf.rename)
+  select = true|fun()|{}, -- vim.ui.select (used in vim.lsp.buf.code_action)
+  open_link = true|{      -- keymappings to open uri links (clicked or under cursor)
     {{"", "i"}, "<C-LeftMouse>"},
-    {"n", "gl"}
-  }
+    {"n", "gl"},
+  },
+}
+
+-- table of config options for `input` and `select`:
+local winConfig = {
+  title_pos = "left"|"center"|"right", -- ↓ highlight group of the prompt (replaces `""`)
+	title_fmt = {{"[", "FloatBorder"}, {"", "FloatTitle"}, {"]", "FloatBorder"}},
 }
 ```
 
