@@ -319,11 +319,6 @@ static void lua_code_fmt(const char* doc, char** fmtPtr, int* docPos, const char
 static void lua_param_fmt(const char* doc, char** fmtPtr, int* docPos) {
 	int i     = *docPos;
 	char* fmt = *fmtPtr;
-	*fmt++    = '-';
-	*fmt++    = ' ';
-	*fmtPtr   = fmt;
-	if (doc[i += 2] == -94) i += 2;
-	*docPos = i;
 
 	if (doc[i] == '|') return;
 	else if (doc[i] == '"') {
@@ -415,13 +410,13 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 		lua_code_fmt(doc, &fmt, &i, "```");
 		i += 3;
 		while (*--fmt <= ' ') {}
-		fmt = append(fmt + 1, "\n```\n");
+		fmt = append(fmt + 1, "```\n\n");
 		if (!doc[i]) return fmt - 1;
 	} else {
 		while (doc[i] == '\n' || doc[i] == ' ') i++;
 		i--;
 	}
-	int indent[] = {0, 0}; // [0] = base, [1] = last noted
+	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent
 	char kind    = 0;
 	while (++i < len) {
 		switch (doc[i]) {
@@ -461,7 +456,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					while (*--fmt <= ' ') {}
 					fmt++;
 					i += end[0] == '`' ? 3 : 5;
-					fmt = append(fmt, "\n```\n");
+					fmt = append(fmt, "```\n\n");
 				}
 				break;
 			case '|': // vim help-page-style links '|text|'
@@ -500,7 +495,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			} break;
 			case ':':
 				if (alike(doc + i + 1, " ~\n") > 0) { // vim sections ' Section: ~'
-					int j = 0;
+					int j = indent[0] = indent[1] = indent[2] = 0;
 					while (fmt[j] != '\n') j--;
 					j += 2;
 					fmt[j - 1] = '*';
@@ -537,59 +532,68 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': { // format: '@*param* `name` — desc'
-				indent[0] = 0;
-				indent[1] = 3;
-				int j     = i + 2;
+				int j = i + 2;
 				while (doc[j] >= 'a' && doc[j] <= 'z') j++; // must be a word
 				if (doc[j] != '*' || doc[i + 1] != '*' || doc[j + 1] != ' ') {
 					*fmt++ = '@';
 					break;
 				}
-				j -= i;
 				i += 2;
 				fmt = resolveKind(doc, fmt, &i, &kind);
+				j   = i;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
 				if (kind == 'r') {       // '@return'
 					if (doc[++i] == '`') { // fixing word wrapped as variable name
 						while (doc[++i] != '`') *fmt++ = doc[i];
 						i += 4;
 					} else i += 2;
+					indent[2] += i - j - 2;
 				} else {
-					j = i;
 					while (doc[++i] > ' ') *fmt++ = doc[i];
 					if (alike(doc + i, " —") > 0) {
 						i += 4;
-						*fmt++    = ':';
-						indent[0] = -1;
-						indent[1] = i - j - 2;
+						*fmt++ = ':';
 					}
-					*fmt++ = ' ';
+					while (doc[i] == ' ') *fmt++ = doc[i++];
+					indent[2] += --i - j - 3;
+				}
+				if (kind) {
+					indent[0] = 1; // we don't know the type so we can't adjust text indent properly
+					indent[1] = 0;
 				}
 			} break;
 			case '\n': {
 				if (fmt[-1] == ' ') fmt--;
 				if (fmt[-1] != '\n') *fmt++ = '\n';
-				if (alike(doc + i + 1, "---\n") > 0) i += 4;
-				int j = 1; // get beginning of text on the next line
+				if (alike(doc + ++i, "---\n") > 0) i += 4;
+				int j = 0; // get beginning of text on the next line
 				while (doc[i + j] == ' ') j++;
 				if (((doc[i + j] == '-' || doc[i + j] == '+' || doc[i + j] == '*') &&
 				      doc[i + j + 1] == ' ') || // param description
 				  alike(doc + i + j, "• ") > 0) {
-					if (j > 4) { // 2nd+ level indent
-						if (indent[0] > 0 && indent[0] <= j) i += indent[1];
-						else i += indent[1] = (indent[0] = j) - 4; // 1st occurence of 2nd level indent
-					} else {                                     // back at 1st level
-						indent[0] = 0;
-						indent[1] = doc[i + j] == -30 ? 3 : 0; // indent only for '   • {param}'
-						if (j == 4) i += j - 2;
+					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
+						i += indent[0] = j;
+						indent[1] = indent[2] = 0;
+					} else if (indent[1] && j > indent[1]) i += indent[1] - 2; // align to 2nd lvl
+					else i += (indent[1] = j) - 2;                             // 2nd lvl indent
+					*fmt++ = ' ';
+					while (doc[i++] == ' ') *fmt++ = ' ';
+					*fmt++ = '-';
+					*fmt++ = ' ';
+					if (doc[++i] == -94) {
+						i += 2;
+						if (!indent[1]) indent[0] += 2; // `• {}` extra, 2nd lvl is adjusted to that
 					}
-					while (doc[++i] == ' ') *fmt++ = ' ';
-					lua_param_fmt(doc, &fmt, &i); // format param entry
-					i--;
-				} else if (indent[0] == -1 && j > 3) {
-					for (int k = indent[1]; k; k--) *fmt++ = ' ';
-					i += j - 1;
-				} else if (indent[1] < j) i += indent[1]; // wrapped text alignment
+					lua_param_fmt(doc, &fmt, &i);           // format param entry
+				} else if (indent[0] && j >= indent[0]) { // wrapped text alignment
+					if (indent[1] && j >= indent[1]) i += indent[1] - 2;
+					else if (!indent[1] && indent[2] && j >= indent[2])
+						i += j - indent[2]; // indent with indent[2] spaces
+					else i += indent[0];
+					*fmt++ = ' ';
+					while (doc[i] == ' ') *fmt++ = doc[i++];
+				}
+				i--;
 			} break;
 			default:
 				*fmt++ = doc[i];

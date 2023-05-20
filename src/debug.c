@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 			for (int j = 1; *fmt; j++, ptr = fmt) {
 				while (*fmt != '\n') fmt++;
 				*fmt++ = '\0';
-				printf("\033[95m%4ld\033[91m:\033[0m %s\n", ptr - start, ptr);
+				printf("\033[95m%4ld\033[91m:\033[0m%s\n", ptr - start, ptr);
 			}
 			free(start);
 			if (argc < 3) free(doc);
