@@ -1,12 +1,18 @@
 -- originally made by [nvim-lsp-extras](https://github.com/seblj/nvim-lsp-extras/blob/master/lua/nvim-lsp-extras/treesitter_hover/markdown.lua#L148)
-local M = {default = {{{"", "i"}, "<C-LeftMouse>"}, {"n", "gl"}}, handlers = {}}
+local M = {
+	---@type reform.Keymappings
+	default = {{{"", "i"}, "<C-LeftMouse>"}, {"n", "gl"}},
+	handlers = {},
+}
 function M.handlers.open_link(line, col)
 	local hover = { -- using array to keep order of testing
-		{"%[.-%]%((https?://[^)]-)%)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
+		{
+			"%[.-%]%((https?://[^)]-)%)",
+			function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end,
+		},
 		{
 			"%[.-%]%(file://([^)]-)%)",
-			function(file)
-				-- relying on [urlencode](https://github.com/AquilaIrreale/urlencode) for now
+			function(file) -- relying on [urlencode](https://github.com/AquilaIrreale/urlencode)
 				file = vim.fn.system("urlencode -d", file)
 				vim.cmd.e(file)
 			end,
@@ -14,7 +20,10 @@ function M.handlers.open_link(line, col)
 		{"%[.-%]%(([^)]-)%)", vim.cmd.e},
 		{"%[([^%] ]-)%][^(%]]", vim.cmd.help},
 		{"|([^% ]]-)|", vim.cmd.help},
-		{"(https?://[^ \t()[%]{}]+)", function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end},
+		{
+			"(https?://[^ \t()[%]{}]+)",
+			function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end,
+		},
 		{"(~?[A-Z0-9a-z._-]*/[/A-Z0-9a-z._-]*)", vim.cmd.e},
 	}
 
@@ -40,6 +49,7 @@ function M.handlers.mouse()
 			                     data.line - 1, data.line, true)[1], data.column)
 end
 
+---@param config boolean|reform.Keymappings set your custom shortcuts or disable the feature
 return function(config)
 	if config then config = M.default end
 	if config then

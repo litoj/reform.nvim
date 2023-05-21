@@ -1,4 +1,4 @@
 *.o
 *.so
 *.out
-src/test.txt
+src/test*

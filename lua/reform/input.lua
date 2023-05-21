@@ -1,5 +1,6 @@
 local M = {
 	default = vim.ui.input,
+	---@type reform.winConfig
 	config = {
 		title_pos = "center",
 		title_fmt = {{"[", "FloatBorder"}, {"", "FloatTitle"}, {"]", "FloatBorder"}},
@@ -80,6 +81,7 @@ function M.override(opts, on_confirm)
 	})
 end
 
+---@param config reform.Overridable|reform.winConfig
 return function(config)
 	if config then
 		if type(config) == "function" then

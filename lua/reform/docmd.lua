@@ -1,7 +1,9 @@
 local M = {
+	---@type reform.docmd.Defaults
 	default = {
 		convert = vim.lsp.util.convert_input_to_markdown_lines,
 		stylize = vim.lsp.util.stylize_markdown,
+		---@type reform.docmd.Config
 		config = {
 			override = {convert = true, stylize = true, cmp_doc = true, cmp_sig = true},
 			ft = {c = true, cpp = true, lua = true, java = true},
@@ -11,7 +13,7 @@ local M = {
 	set = {},
 }
 
-function M.override.convert(doc, _contents)
+function M.override.convert(doc, _)
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == "string" or doc.kind == "plaintext" then return vim.split(doc.value or doc, "\n") end
 	local str = doc.value
@@ -36,7 +38,7 @@ function M.override.convert(doc, _contents)
 			"%1\n```" .. vim.bo.filetype .. "\n%2```\n"), "\n")
 end
 
-function M.override.stylize(buf, contents, _opts)
+function M.override.stylize(buf, contents, _)
 	vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
 	vim.api.nvim_buf_set_lines(buf, 0, 0, false, contents)
 	return contents
@@ -50,16 +52,9 @@ end
 
 function M.override.cmp_sig(self, sig, idx)
 	local docs = {}
-	-- signature label.
-	if sig.label then
-		docs[1] = "```lua\n" ..
-				          table.concat(
-						vim.lsp.util.convert_input_to_markdown_lines(self:_signature_label(sig, idx)), "\n") .. "```"
-	end
-	-- parameter docs.
+	if sig.label then docs[1] = "```\n" .. self:_signature_label(sig, idx) .. "```" end
 	local param = sig.parameters[idx]
 	if param then if param.documentation then docs[#docs + 1] = param.documentation.value end end
-	-- signature docs.
 	if sig.documentation then docs[#docs + 1] = sig.documentation.value end
 
 	return {kind = 'markdown', value = table.concat(docs, "\n\n")}
@@ -99,6 +94,7 @@ function M.set.cmp_sig(fn)
 	end)
 end
 
+---@param config boolean|reform.docmd.Config reform documentation to your liking
 return function(config)
 	if type(config) == "boolean" then
 		config = config and {} or
