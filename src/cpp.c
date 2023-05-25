@@ -1,105 +1,106 @@
 #include "utils.h"
 
 char* cpp_fmt(const char* doc, char* fmt, int len) {
-	int i = -1, end = len;
+	const char* docEnd = doc + len;
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
-		len -= 6;
-		while (doc[len] != '`' || doc[len - 1] != '`' || doc[len - 2] != '`') len--;
-		if (doc[len + 1] == '\n') {
-			len += 2;
-			while (doc[len] != '\n') *fmt++ = doc[len++];
+		docEnd = doc + len - 6;
+		while (*docEnd != '`' || docEnd[-1] != '`' || docEnd[-2] != '`') docEnd--;
+		if (docEnd[1] == '\n') {
+			docEnd += 2;
+			while (*docEnd != '\n') *fmt++ = *docEnd++;
 			return fmt;
 		}
-		end = (len -= 2); // end before ```
-		fmt = append(fmt, "```cpp");
-		while (doc[len] != '\n') len++;
-		while (doc[len]) *fmt++ = doc[len++];
+		docEnd -= 2; // end before ```
+		fmt                 = append(fmt, "```cpp");
+		const char* docCode = docEnd;
+		while (*docCode != '\n') docCode++;
+		while (*docCode) *fmt++ = *docCode++;
 		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
 		*fmt++  = '\n';
 		if (alike(doc, "###") > 0) { // strip type defs - already in code block
-			while (doc[++i] != '\n' || doc[++i] == '-' || doc[i] == '\n') {}
-			if (alike(doc + i, "Param") > 0 || alike(doc + i, "Type") > 0) {
-				while (doc[++i] != '\n') {}
-				while (doc[++i] != '\n' || doc[++i] == '-') {}
+			while (*++doc != '\n' || *++doc == '-' || *doc == '\n') {}
+			if (alike(doc, "Param") > 0 || alike(doc, "Type") > 0) {
+				while (*++doc != '\n') {}
+				while (*++doc != '\n' || *++doc == '-') {}
 			}
-			i--;
 			*fmt++ = '\n';
 		}
 	}
+	doc--;
 	char kind = 0;
-	while (++i < end) {
-		switch (doc[i]) {
+	while (++doc < docEnd) {
+		switch (*doc) {
 			case '\\':
-				*fmt++ = doc[i++];
-				*fmt++ = doc[i];
+				*fmt++ = '\\';
+				*fmt++ = *++doc;
 				break;
 			case '`':
-				if (doc[i + 1] == '`' && doc[i + 2] == '`') {
-					i += 2;
+				if (doc[1] == '`' && doc[2] == '`') {
+					doc += 2;
 					fmt = append(fmt, "```cpp");
-					while (doc[i] != '\n') i++;
-					while (doc[i] != '`' || doc[++i] != '`' || doc[++i] != '`') *fmt++ = doc[i++];
+					while (*doc != '\n') doc++;
+					while (*doc != '`' || *++doc != '`' || *++doc != '`') *fmt++ = *doc++;
 					fmt = append(fmt - 1, "```");
 				} else {
 					*fmt++ = '`';
-					while (doc[++i] != '`') *fmt++ = doc[i];
+					while (*++doc != '`') *fmt++ = *doc;
 					*fmt++ = '`';
 				}
 				break;
 			case -110:  // →
 				fmt -= 2; // → is a 3-byte char
-				i += 3;
-				while (doc[i] != '\n' || doc[i + 1] != '\n') i++;
-				i++;
+				doc += 3;
+				while (*doc != '\n' || doc[1] != '\n') doc++;
+				doc++;
 				break;
 			case '%':
-				if (doc[i - 1] != ' ') *fmt++ = '%';
+				if (doc[-1] != ' ') *fmt++ = '%';
 				else {
 					*fmt++ = '*';
-					while (doc[++i] > ' ') *fmt++ = doc[i];
-					i--;
+					while (*++doc > ' ') *fmt++ = *doc;
+					doc--;
 					*fmt++ = '*';
 				}
 				break;
 			case '@': {
-				int j = 1;
-				while (doc[i + j] >= 'a' && doc[i + j] <= 'z') j++;
-				if (doc[i + j] != ' ') {
+				int i = 1;
+				while (doc[i] >= 'a' && doc[i] <= 'z') i++;
+				if (doc[i] != ' ') {
 					*fmt++ = '@';
 					break;
-				} else if (j == 2) {
+				} else if (i == 2) {
 					*fmt++ = '`';
-					i += 2;
-					while (doc[++i] > 47) *fmt++ = doc[doc[i] == '\\' ? ++i : i];
+					doc += 2;
+					while (*++doc > 47) *fmt++ = *doc == '\\' ? *++doc : *doc;
 					*fmt++ = '`';
-					*fmt++ = doc[i];
+					*fmt++ = *doc;
 					break;
 				}
-				i++;
-				if (doc[i] == 't' && doc[i + 1] == 'p') i++;
-				fmt = resolveKind(doc, fmt, &i, &kind);
+				doc++;
+				if (*doc == 't' && doc[1] == 'p') doc++;
+				resolveKind(&doc, &fmt, &kind);
 				if (kind == 'r' || kind == 'p' || kind == 't') {
 					fmt = append(fmt, " - ");
 					if (kind != 'r') {
 						*fmt++ = '`';
-						while (doc[++i] > 47) *fmt++ = doc[doc[i] == '\\' ? ++i : i];
+						while (*++doc > 47) *fmt++ = *doc == '\\' ? *++doc : *doc;
 						if (fmt[-1] == ',') {
 							fmt[-1] = '`';
 							*fmt++  = ',';
-							i--;
+							doc--;
 						} else fmt = append(fmt, "`: ");
 					}
 				}
 			} break;
 			case '\n':
 				while (fmt[-1] == ' ') fmt--;
-				if (alike(doc + i + 1, "---") > 0) i += 4;
+				if (alike(doc + 1, "---") > 0) doc += 4;
 				if (fmt[-1] == '\n' && kind) {
 					kind = 0;
 					break;
 				}
 			default:
-				*fmt++ = doc[i];
+				*fmt++ = *doc;
 		}
 	}
 	return fmt;

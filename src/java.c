@@ -3,102 +3,99 @@
 /**
  * @brief Format java code from jdtls markdown docs
  *
- * @param doc original markdown
- * @param fmt buffer for formatted documentation
- * @param docStart ref to pos of `doc` parsing
+ * @param docPtr ptr to current pos in source docs
+ * @param fmtPtr ptr to buffer for formatted docs
  * @param type '>' or ' '
- * @return ptr to current `fmt` position
  */
-static char* java_code_fmt(const char* doc, char* fmt, int* docPos, char type) {
-	int i    = *docPos;
-	fmt      = append(fmt - (fmt[-2] == '\n'), "```java\n");
-	int skip = 1;
-	while (doc[i + skip] == ' ') skip++; // strip indent to keep ours' consistent
+static void java_code_fmt(const char** docPtr, char** fmtPtr, char type) {
+	const char* doc = *docPtr;
+	char* fmt       = append(*fmtPtr - ((*fmtPtr)[-2] == '\n'), "```java\n");
+	int skip        = 1;
+	while (doc[skip] == ' ') skip++; // strip indent to keep ours' consistent
 	while (1) {
 		*fmt++ = ' '; // add some indent for easier code distinction
-		i += skip;
-		while (doc[i] != '\n') *fmt++ = doc[i++];
-		if (doc[i + 1] != type) break;
-		else *fmt++ = doc[i++];
+		doc += skip;
+		while (*doc != '\n') *fmt++ = *doc++;
+		if (doc[1] != type) break;
+		else *fmt++ = *doc++;
 	}
-	*docPos = i - 1;
-	return append(fmt, "```");
+	*docPtr = doc - 1;
+	*fmtPtr = append(fmt, "```");
 }
 
 char* java_fmt(const char* doc, char* fmt, int len) {
-	int i     = -1;
-	char kind = 0; // type of currently processed list (p = parameter...)
+	const char* docEnd = doc + len;
 	if (!alike(doc, "```java")) {
-		int j = 0;
-		while (doc[j] != '\n') j++;
-		if (doc[j + 1] != '\n') {
+		int i = 0;
+		while (doc[i] != '\n') i++;
+		if (doc[i + 1] != '\n') {
 			fmt = append(fmt, "```java\n");
 			// fix TS highlighting (recognize method/class with 'x<y>' `type`)
 			// this cannot fix method identifier highlight, only `type` and `parameter`
-			int j = 2, cont = 0;
-			while (doc[j] && doc[j] != '\n') {
-				switch (doc[j++]) {
+			int i = 2, cont = 0;
+			while (doc[i] && doc[i] != '\n') {
+				switch (doc[i++]) {
 					case '(':                        // will get here only if '<' was found
 						fmt = append(fmt, "default "); // any method keyword for TS to recognize method
-						j   = len;
+						i   = len;
 						break;
 					case '<':
 						cont = 1;
 						break;
 					case ' ':
-						if (!cont) j = len;
+						if (!cont) i = len;
 						break;
 				}
 			}
-			if (doc[j - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
-			i = 0;
-			while (doc[i] && doc[i] != '\n') *fmt++ = doc[i++];
+			if (doc[i - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
+			while (*doc > '\n') *fmt++ = *doc++;
 			fmt = append(fmt, "```\n\n");
 		}
 	}
-	while (++i < len) {
-		switch (doc[i]) {
+	char kind = 0; // type of currently processed list (p = parameter...)
+	while (++doc < docEnd) {
+		switch (*doc) {
 			case '>': // code block '>' delimited: '> code'
-				if (fmt[-1] == '\n' && fmt[-2] == '\n') fmt = java_code_fmt(doc, fmt, &i, '>');
+				if (fmt[-1] == '\n' && fmt[-2] == '\n') java_code_fmt(&doc, &fmt, '>');
 				else *fmt++ = '>';
 				break;
 			case '\n': {
-				int j = 1;
-				while (doc[i + j] == ' ') j++;
+				int i = 1;
+				while (doc[i] == ' ') i++;
 				// deal with non-lists (probably italics or bold markers)
-				if (!alike(doc + i + j, "*  ")) {
+				if (!alike(doc + i, "*  ")) {
 					// code block 4-space delimited: '    code'
-					if (j == 5 && doc[i + j] >= ' ') fmt = java_code_fmt(doc, fmt, &i, ' ');
-					else if (doc[i + j] == '\n' && j > 1) i += j - 1;
+					if (i == 5 && doc[i] >= ' ') java_code_fmt(&doc, &fmt, ' ');
+					else if (doc[i] == '\n' && i > 1) doc += i - 1;
 					else *fmt++ = '\n';
 					break;
 				}
 				// change list marker from '*' to '-' and halve the indentation (1 + 2 spaces)
 				if (fmt[-1] != '\n') *fmt++ = '\n';
-				i += j + 2; // skip all indentation + '*  '
-				if (j == 2) {
+				doc += i + 2; // skip all indentation + '*  '
+				if (i == 2) {
 					// sections are 1.st level indent as lists
-					if (doc[i + 1] == '*' && doc[i + 2] == '*') {
+					if (doc[1] == '*' && doc[2] == '*') {
 						if (!kind) *fmt++ = '\n'; // separate start of first found section
-						kind = doc[i + 3] + 32;   // record current section type
+						kind = doc[3] + 32;       // record current section type
 					} else fmt = append(fmt, " - ");
 				} else {         // add half the identation (we use 2, java 4)
-					j = j / 2 - 2; // -2: indent/list depth <<1; list indent >= 1
-					while (--j > 0) *fmt++ = ' ';
+					i = i / 2 - 2; // -2: indent/list depth <<1; list indent >= 1
+					while (--i > 0) *fmt++ = ' ';
 					fmt = append(fmt, " - ");
 					// params use format: '     *  **param** desc'
-					if (doc[i + 1] == '*' && doc[i + 2] == '*' && kind == 'p') {
-						i += 3;
+					if (doc[1] == '*' && doc[2] == '*' && kind == 'p') {
+						doc += 3;
 						*fmt++ = '`'; // format into our ' - `param`: desc'
-						while (doc[i] != '*') *fmt++ = doc[i++];
-						i++;
+						while (*doc != '*') *fmt++ = *doc++;
+						doc++;
 						*fmt++ = '`';
 						*fmt++ = ':';
 					}
 				}
 			} break;
 			default:
-				*fmt++ = doc[i];
+				*fmt++ = *doc;
 		}
 	}
 	return fmt;

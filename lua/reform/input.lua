@@ -34,7 +34,7 @@ function M.override(opts, on_confirm)
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
 		if confirmed then
-			vim.fn.histadd("@", text)
+			if #text > 3 then vim.fn.histadd("@", text) end
 			on_confirm(text)
 		else
 			on_confirm(opts.cancelreturn == nil and "" or opts.cancelreturn)

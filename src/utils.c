@@ -9,37 +9,42 @@ int alike(const char* str, const char* cmp) {
 	return cmp[j] ? 0 : j;
 }
 
-char* resolveKind(const char* doc, char* fmt, int* docPos, char* kind) {
-	int i = *docPos;
+void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {
+	const char* doc = *docPtr;
+	char* fmt       = *fmtPtr;
 	// we rely on parsers to catch `@a` and `@p` themselves
-	if (!*kind && !alike(doc + i, "brief")) *fmt++ = '\n';
+	if (!*kind && !alike(doc, "brief")) *fmt++ = '\n';
 	const char* section;
 	int skip;
-	if ((skip = alike(doc + i, "param"))) section = "**Parameters:**\n";
-	else if ((skip = alike(doc + i, "return"))) section = "**Returns:**\n";
-	else if ((skip = alike(doc + i, "throw"))) section = "**Throws:**\n";
-	else if ((skip = alike(doc + i, "see"))) section = "**See:**\n";
-	else if ((skip = alike(doc + i, "ingroup"))) {
-		i += skip;
-		while (doc[i] >= ' ') i++;
-		*docPos = i;
-		return fmt;
-	} else if ((skip = alike(doc + i, "brief"))) {
+	if ((skip = alike(doc, "param"))) section = "**Parameters:**\n";
+	else if ((skip = alike(doc, "return"))) section = "**Returns:**\n";
+	else if ((skip = alike(doc, "throw"))) section = "**Throws:**\n";
+	else if ((skip = alike(doc, "see"))) section = "**See:**\n";
+	else if ((skip = alike(doc, "ingroup"))) {
+		doc += skip;
+		while (*doc >= ' ') doc++;
+		*docPtr = doc;
+		*fmtPtr = fmt;
+		return;
+	} else if ((skip = alike(doc, "brief"))) {
 		*kind   = 0;
-		*docPos = i + skip;
-		return fmt;
+		*docPtr = doc + skip;
+		*fmtPtr = fmt;
+		return;
 	} else { // '@other' -> '**Other**:\n'
 		*fmt++ = '*';
 		*fmt++ = '*';
-		*fmt++ = *kind = doc[i++] - 32; // -32 = 'a' -> 'A'
-		while (doc[i] > ' ') *fmt++ = doc[i++];
-		*docPos = i;
-		return append(fmt, "**: ");
+		*fmt++ = *kind = *doc++ - 32; // -32 = 'a' -> 'A'
+		while (*doc > ' ') *fmt++ = *doc++;
+		*docPtr = doc;
+		*fmtPtr = append(fmt, "**: ");
+		return;
 	}
-	if (*kind != doc[i]) fmt = append(fmt, section);
-	*kind = doc[i];
-	i += skip;
-	while (doc[i] > ' ') i++;
-	*docPos = i;
-	return fmt;
+	if (*kind != *doc) fmt = append(fmt, section);
+	*kind = *doc;
+	doc += skip;
+	while (*doc > ' ') doc++;
+	*docPtr = doc;
+	*fmtPtr = fmt;
+	return;
 }
