@@ -248,17 +248,14 @@ static void lua_code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 			case '\n':
 				*fmt++ = '\n';
 				{ // numbered return type - multiple return options - `  2. retVal`
-					int j = 0;
-					while (*++doc == ' ') {
-						*fmt++ = *doc;
-						j++;
-					}
-					doc--;
-					if (j != 2) break;
-					j = 1;
-					while ('0' <= doc[j] && doc[j] <= '9') j++;
-					if (doc[j] != '.') break;
-					doc += j;
+					if (doc[1] != ' ' || doc[2] != ' ') break;
+					doc += 2;
+					*fmt++             = ' ';
+					*fmt++             = ' ';
+					const char* docTmp = doc + 1;
+					while ('0' <= *docTmp && *docTmp <= '9') docTmp++;
+					if (*docTmp != '.') break;
+					doc    = docTmp;
 					*fmt++ = '-';
 				}
 			case '>': // return type
@@ -490,7 +487,8 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			} break;
 			case ':':
 				if (alike(doc + 1, " ~\n") > 0) { // vim sections ' Section: ~'
-					int j = indent[0] = indent[1] = indent[2] = 0;
+					indent[0] = indent[1] = indent[2] = 0;
+					int j                             = -1;
 					while (fmt > fmt0 && fmt[j] != '\n') j--;
 					j += 2;
 					fmt[j - 1] = '*';
@@ -527,15 +525,15 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': { // format: '@*param* `name` — desc' - sumneko_ls format
-				int j = 2;
-				while (doc[j] >= 'a' && doc[j] <= 'z') j++; // must be a word
-				if (doc[j] != '*' || doc[1] != '*' || doc[j + 1] != ' ') {
+				const char* docTmp = doc + 2;
+				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
+				if (*docTmp != '*' || doc[1] != '*' || docTmp[1] != ' ') {
 					*fmt++ = '@';
 					break;
 				}
 				doc += 2;
 				resolveKind(&doc, &fmt, &kind);
-				const char* docTmp = doc;
+				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
 				if (kind == 'r') {     // '@return'
 					if (*++doc == '`') { // fixing word wrapped as variable name

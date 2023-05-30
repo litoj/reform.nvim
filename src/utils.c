@@ -4,9 +4,9 @@ char* append(char* dst, const char* str) {
 }
 
 int alike(const char* str, const char* cmp) {
-	int j = 0;
-	while (cmp[j] && cmp[j] == str[j]) j++;
-	return cmp[j] ? 0 : j;
+	const char* from = cmp;
+	while (*cmp && *cmp == *str++) cmp++;
+	return *cmp ? 0 : cmp - from;
 }
 
 void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {

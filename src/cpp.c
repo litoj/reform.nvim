@@ -5,9 +5,9 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
 		docEnd = doc + len - 6;
 		while (*docEnd != '`' || docEnd[-1] != '`' || docEnd[-2] != '`') docEnd--;
-		if (docEnd[1] == '\n') {
-			docEnd += 2;
-			while (*docEnd != '\n') *fmt++ = *docEnd++;
+		if (docEnd[1] == '\n') { // ```\nsome simple text``` - no detailed docs, only signature
+			doc = docEnd + 2;
+			while (*doc != '`' || *++doc != '`' || *++doc != '`') *fmt++ = *doc++;
 			return fmt;
 		}
 		docEnd -= 2; // end before ```
@@ -63,12 +63,12 @@ char* cpp_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': {
-				int i = 1;
-				while (doc[i] >= 'a' && doc[i] <= 'z') i++;
-				if (doc[i] != ' ') {
+				const char* docTmp = doc + 1;
+				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++;
+				if (*docTmp != ' ') {
 					*fmt++ = '@';
 					break;
-				} else if (i == 2) {
+				} else if (docTmp - doc == 2) {
 					*fmt++ = '`';
 					doc += 2;
 					while (*++doc > 47) *fmt++ = *doc == '\\' ? *++doc : *doc;

@@ -26,32 +26,34 @@ static void java_code_fmt(const char** docPtr, char** fmtPtr, char type) {
 char* java_fmt(const char* doc, char* fmt, int len) {
 	const char* docEnd = doc + len;
 	if (!alike(doc, "```java")) {
-		int i = 0;
-		while (doc[i] != '\n') i++;
-		if (doc[i + 1] != '\n') {
+		const char* docTmp = doc;
+		while (*docTmp != '\n') docTmp++;
+		if (docTmp[1] != '\n') {
 			fmt = append(fmt, "```java\n");
 			// fix TS highlighting (recognize method/class with 'x<y>' `type`)
 			// this cannot fix method identifier highlight, only `type` and `parameter`
-			int i = 2, cont = 0;
-			while (doc[i] && doc[i] != '\n') {
-				switch (doc[i++]) {
-					case '(':                        // will get here only if '<' was found
-						fmt = append(fmt, "default "); // any method keyword for TS to recognize method
-						i   = len;
+			int cont           = 0;
+			const char* docTmp = doc + 2;
+			while (*docTmp > '\n' && cont >= 0) {
+				switch (*docTmp++) {
+					case '(':                         // will get here only if '<' was found
+						fmt  = append(fmt, "default "); // any method keyword for TS to recognize method
+						cont = -1;
 						break;
 					case '<':
 						cont = 1;
 						break;
 					case ' ':
-						if (!cont) i = len;
+						if (!cont) cont = -1;
 						break;
 				}
 			}
-			if (doc[i - 1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
+			if (docTmp[-1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
 			while (*doc > '\n') *fmt++ = *doc++;
-			fmt = append(fmt, "```\n\n");
+			fmt = append(fmt, "```\n");
 		}
 	}
+	doc--;
 	char kind = 0; // type of currently processed list (p = parameter...)
 	while (++doc < docEnd) {
 		switch (*doc) {
