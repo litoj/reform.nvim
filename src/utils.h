@@ -1,3 +1,5 @@
+#ifndef utils
+#define utils 1
 /**
  * @brief Append `str` to `dst`
  *
@@ -24,3 +26,4 @@ int alike(const char* str, const char* cmp);
  * @param kind kind of previous docs line ('@[]..')
  */
 void resolveKind(const char** docPtr, char** fmtPtr, char* kind);
+#endif

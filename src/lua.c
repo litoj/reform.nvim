@@ -53,7 +53,7 @@ static const char* types[] = {"float", "number", "integer", "string", "any", "un
 static void lua_type_fmt(const char** docPtr, char** fmtPtr) {
 	const char* doc = *docPtr;
 	char* fmt       = *fmtPtr;
-	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
+	if (fmt[-1] == '=' || fmt[-1] == ',' || fmt[-1] == ':') *fmt++ = ' ';
 	do {
 		if (*doc == '|') *fmt++ = *doc++;
 		while (*doc <= ' ') doc++;
@@ -147,9 +147,7 @@ static void lua_type_fmt(const char** docPtr, char** fmtPtr) {
 						  ('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9'))
 							*fmt++ = *doc++; // arg name
 						if (*doc == ':') { // arg type
-							doc++;
-							*fmt++ = ' ';
-							*fmt++ = '=';
+							*fmt++ = *doc++;
 							lua_type_fmt(&doc, &fmt);
 						}
 					} while (*doc == ',');
@@ -164,8 +162,7 @@ static void lua_type_fmt(const char** docPtr, char** fmtPtr) {
 				*fmt++ = '<';
 				while (('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9')) *fmt++ = *doc++;
 				if (*doc == ':') {
-					*fmt++ = '=';
-					doc++;
+					*fmt++ = *doc++;
 					lua_type_fmt(&doc, &fmt);
 				}
 				*fmt++ = *doc++;
@@ -211,11 +208,12 @@ static void lua_type_fmt(const char** docPtr, char** fmtPtr) {
  * @param stop code-ending sequence
  */
 static void lua_code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
+	if (!**docPtr) return;
 	const char* doc = *docPtr;
 	char* fmt       = *fmtPtr;
 	*fmt++          = *doc;
 	int params      = 0; // whether we are in param/arg section of a function definition
-	while (!alike(++doc, stop)) {
+	while (!alike(++doc, stop) && *doc) {
 		switch (*doc) {
 			case '[': // string [[...]]
 				if (doc[1] != '[') {
@@ -271,8 +269,11 @@ static void lua_code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					while (*doc != '|') doc++;
 				}
 				if (doc[1] == ' ') {
-					*fmt++ = ' ';
-					*fmt++ = '=';
+					if (params) *fmt++ = ':';
+					else {
+						*fmt++ = ' ';
+						*fmt++ = '=';
+					}
 					doc++;
 					lua_type_fmt(&doc, &fmt);
 					doc--;
@@ -439,8 +440,9 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 					const char* end = *doc == '`' ? "```" : "</pre>";
 					fmt             = append(fmt, "```");
 					if (*(doc += (*doc == '`' ? 3 : 5)) != '\n')
-						while (*doc != '\n') *fmt++ = *doc++;
+						while (*doc > '\n') *fmt++ = *doc++;
 					else fmt = append(fmt, "lua");
+					if (!*doc) return fmt;
 					*fmt++ = *doc++;
 					if (alike(fmt - 4, "lua") > 0) lua_code_fmt(&doc, &fmt, end);
 					else
@@ -538,7 +540,11 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				if (kind == 'r') {     // '@return'
 					if (*++doc == '`') { // fixing word wrapped as variable name
 						while (*++doc != '`') *fmt++ = *doc;
-						doc += 4;
+						if (alike(doc, "` — ")) doc += 4;
+						else { // if no description, go to next line
+							while (*++doc > '\n') *fmt++ = *doc;
+							doc--;
+						}
 					} else doc += 2;
 					indent[2] += doc - docTmp - 2;
 				} else {
