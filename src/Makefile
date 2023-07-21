@@ -17,10 +17,9 @@ $(TARGET): $(OBJ) docfmt.o
 
 all: clean $(TARGET)
 
-debug: CFLAGS=-pedantic -Wall -g -fsanitize=address,leak
+debug: CFLAGS=-pedantic -Wall -g -fsanitize=address,leak -DDEBUG
 debug: $(OBJ)
-	$(CC) $(CFLAGS) -o main.out debug.c $(OBJ)
-
+	$(CC) $(CFLAGS) -o main.out docfmt.c $(OBJ)
 
 clean:
 	@rm -f *.o main.out $(TARGER)

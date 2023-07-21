@@ -6,7 +6,7 @@ local M = {
 		---@type reform.docmd.Config
 		config = {
 			override = {convert = true, stylize = true, cmp_doc = true, cmp_sig = true},
-			ft = {c = true, cpp = true, lua = true, java = true},
+			ft = {c = true, cpp = true, lua = true, java = true, bash = true, sh = true},
 		},
 	},
 	override = {},
