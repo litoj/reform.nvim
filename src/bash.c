@@ -1,12 +1,12 @@
 #include "utils.h"
 
-char* bash_fmt(const char* doc, char* fmt, int len) {
-	if (alike(doc, "``` man\n") > 0) { // don't format if not in the expected form of bashls
+char* bash_fmt(const unsigned char* doc, char* fmt, int len) {
+	if (alike((const char*) doc, "``` man\n") > 0) {
 		while (doc[len] != '`') len--;
 		doc += 6;
-		len -= 4;
+		len -= 10;
 	}
-	const char* docEnd = doc + len;
+	const unsigned char* docEnd = doc + len;
 
 	int indent[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, lvl = 0;
 	char separated = 0;
@@ -56,7 +56,7 @@ char* bash_fmt(const char* doc, char* fmt, int len) {
 					int i = 0;
 					while (*++doc == ' ') i++;
 					int ilvl = lvl;
-					if (i < indent[lvl] - 3)
+					if (i < indent[lvl] - 3) // 3 to ensure intentional indent
 						while (ilvl && i < indent[ilvl] - 3) ilvl--;
 					if (i > indent[ilvl] + 3) indent[++ilvl] = i;
 
@@ -77,7 +77,7 @@ char* bash_fmt(const char* doc, char* fmt, int len) {
 					if (ilvl) {
 						int j = 0;
 						if (separated) {
-							const char* tmp = doc;
+							const unsigned char* tmp = doc;
 							while (*tmp > ' ' || (*tmp > '\n' && (tmp[1] == ' ' || tmp[-1] != ' '))) tmp++;
 							if (*tmp == '\n' && *++tmp != '\n')
 								for (; *tmp == ' '; tmp++, j++) {}
@@ -156,12 +156,11 @@ char* bash_fmt(const char* doc, char* fmt, int len) {
 					doc--;
 				}
 				break;
-			case -128: // •
-				if (fmt[-1] == -30 && doc[1] == -94) {
-					fmt[-1] = '-';
-					doc++;
-					while (*++doc == ' ') {};
-					*fmt++ = ' ';
+			case 128: // •
+				if (fmt[-1] == -30 && doc[1] == 162) {
+					doc += 2;
+					while (*doc == ' ') doc++;
+					fmt--;
 					doc--;
 				} else *fmt++ = -128;
 				break;

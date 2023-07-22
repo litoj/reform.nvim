@@ -43,9 +43,10 @@ use {
 
 Language servers bellow were tested.
 
+- Bash: `bashls`
 - C/Cpp: `clangd`
-- Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
 - Java: [`nvim-jdtls`](https://github.com/mfussenegger/nvim-jdtls)
+- Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
 
 <details><summary>
 
@@ -54,8 +55,8 @@ Language servers bellow were tested.
 </summary>
 
 - C/Cpp ![C/Cpp](https://user-images.githubusercontent.com/54900518/212124528-7fa9b0b1-9a2e-4b78-be81-e97ace003836.png)
-- Lua, including Vim-style documentation ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
 - Java ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
+- Lua, including Vim-style documentation ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
 </details>
 
 ## Config
