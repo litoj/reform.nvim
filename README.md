@@ -35,8 +35,7 @@ use {
 - [x] as fast as possible - formatted on a single pass, written in `C`
 - [x] fully customizable - all functions can be replaced by your own
 - [x] links should be clickable like in any other IDE (see `open_link` bellow)
-- [ ] support more languages (Rust, go, js...)
-- [ ] better parser error handling (mostly doesn't occur) to avoid entire nvim crash
+- [ ] support Rust, go
 - [x] supports cmp-nvim-lsp-signature-help - has to replace internal method to inject formatting
 
 ## Supported langauges
@@ -47,6 +46,7 @@ Language servers bellow were tested.
 - C/Cpp: `clangd`
 - Java: [`nvim-jdtls`](https://github.com/mfussenegger/nvim-jdtls)
 - Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
+- Typescript/Javascript: `typescript-launguage-server`
 
 <details><summary>
 

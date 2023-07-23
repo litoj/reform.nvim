@@ -2,6 +2,7 @@
 #include "cpp.h"
 #include "java.h"
 #include "lua.h"
+#include "typescript.h"
 #include "utils.h"
 #ifdef DEBUG
 #include <stdio.h>
@@ -11,11 +12,22 @@
 #endif
 #include <stdlib.h>
 
-#define p(fmt) { #fmt, fmt##_fmt }
+#define p(fmt)                                                                                     \
+	{                                                                                                \
+#fmt, fmt##_fmt                                                                                \
+	}
 static struct pair {
 	const char* ft;
 	char* (*parser)(const char*, char*, int);
-} avail[] = { p(lua), p(cpp), {"c", cpp_fmt}, p(java), p(bash), {"sh", bash_fmt} };
+} avail[] = {
+  p(lua),
+  p(cpp),
+  {"c", cpp_fmt},
+  p(java),
+  p(bash),
+  {"sh", bash_fmt},
+  {"javascript", typescript_fmt},
+  {"typescript", typescript_fmt}};
 static int langs = sizeof(avail) / sizeof(struct pair);
 
 #ifdef DEBUG

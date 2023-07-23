@@ -37,7 +37,7 @@ void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {
 		*fmt++ = *kind = *doc++ - 32; // -32 = 'a' -> 'A'
 		while (*doc > ' ') *fmt++ = *doc++;
 		*docPtr = doc;
-		*fmtPtr = append(fmt, "**: ");
+		*fmtPtr = append(fmt[-1] == '*' ? fmt - 1 : fmt, "**: ");
 		return;
 	}
 	if (*kind != *doc) fmt = append(fmt, section);
