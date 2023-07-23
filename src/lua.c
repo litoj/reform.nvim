@@ -338,8 +338,8 @@ static void param_fmt(const char** docPtr, char** fmtPtr) {
 		if (*doc == '{') doc++;
 		if ('A' <= *doc && *doc <= 'Z') return;
 		*fmt++ = '`';
-		while (('a' <= *doc && *doc <= 'z') || *doc == '_' || *doc == '.' ||
-		       ('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9') || *doc == '\\') {
+		while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
+		       ('.' <= *doc && *doc <= '9') || *doc == '\\') {
 			if (*doc == '\\') doc++;
 			*fmt++ = *doc++;
 		}
@@ -405,7 +405,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 		}
 		code_fmt(&doc, &fmt, "```");
 		doc += 3;
-		while (*fmt-- <= ' ') {}
+		while (*--fmt <= ' ') {}
 		fmt = append(fmt + 1, "```\n\n");
 		if (doc >= docEnd) return fmt - 1;
 	} else doc--;

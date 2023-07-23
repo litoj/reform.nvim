@@ -4,19 +4,7 @@ local M = {
 		convert = vim.lsp.util.convert_input_to_markdown_lines,
 		stylize = vim.lsp.util.stylize_markdown,
 		---@type reform.docmd.Config
-		config = {
-			override = {convert = true, stylize = true, cmp_doc = true, cmp_sig = true},
-			ft = {
-				c = true,
-				cpp = true,
-				lua = true,
-				java = true,
-				bash = true,
-				sh = true,
-				javascript = true,
-				typescript = true,
-			},
-		},
+		config = {override = {convert = true, stylize = true, cmp_doc = true, cmp_sig = true}, ft = true},
 	},
 	override = {},
 	set = {},
@@ -37,7 +25,7 @@ function M.override.convert(doc, _)
 		end
 	end
 
-	if M.config.ft[vim.bo.filetype] then
+	if M.config.ft == true or M.config.ft[vim.bo.filetype] then
 		-- vim.api.nvim_echo({{vim.inspect(str)}}, false, {})
 		return require 'reform.docfmt'(str, vim.bo.filetype)
 	end

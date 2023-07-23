@@ -1,8 +1,19 @@
 # reform.nvim
 
-Documentation should be informative, concise, and easy to read.
+Documentation should be uniform, concise, and easy to read.
 Reform the looks of your lsp documentation with a fast single-pass parser written in `C` and
 further enhance your experience by enabling clickable links (fully customizable).
+
+## Goals
+
+### Features
+
+- [x] identical look across different languages (including vim docs in `lua`)
+- [x] as fast as possible - formatted on a single pass, written in `C`
+- [x] fully customizable - all functions can be replaced by your own
+- [x] links should be clickable like in any other IDE (see `open_link` bellow)
+- [x] supports `cmp-nvim-lsp-signature-help` - has to replace internal method to inject formatting
+- [ ] support `Rust`, `go`
 
 ## Installation
 
@@ -27,38 +38,6 @@ use {
 }
 ```
 
-## Goals
-
-### Features
-
-- [x] identical look across different languages (including vim docs in lua)
-- [x] as fast as possible - formatted on a single pass, written in `C`
-- [x] fully customizable - all functions can be replaced by your own
-- [x] links should be clickable like in any other IDE (see `open_link` bellow)
-- [ ] support Rust, go
-- [x] supports cmp-nvim-lsp-signature-help - has to replace internal method to inject formatting
-
-## Supported langauges
-
-Language servers bellow were tested.
-
-- Bash: `bashls`
-- C/Cpp: `clangd`
-- Java: [`nvim-jdtls`](https://github.com/mfussenegger/nvim-jdtls)
-- Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
-- Typescript/Javascript: `typescript-launguage-server`
-
-<details><summary>
-
-### Screenshots: `with TS` vs. `reform.nvim`
-
-</summary>
-
-- C/Cpp ![C/Cpp](https://user-images.githubusercontent.com/54900518/212124528-7fa9b0b1-9a2e-4b78-be81-e97ace003836.png)
-- Java ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
-- Lua, including Vim-style documentation ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
-</details>
-
 ## Config
 
 Defaults:
@@ -72,8 +51,8 @@ require'reform'.setup {
       cmp_doc = true|fun(), -- reform cmp docs function - require'cmp.entry'.get_documentation
       cmp_sig = true|fun(), -- reform cmp-nvim-lsp-signature-help formatting function to format MD
     },
-    ft = { -- only boolean values
-      c = true, cpp = true, lua = true, java = true
+    ft = true|{           -- filetypes allowed for parsing (default=all/ ft=true)
+      lang = true           -- lang = name of supported language, boolean values
     },
   },
   input = true|fun()|{},  -- vim.ui.input (used in vim.lsp.buf.rename)
@@ -93,3 +72,26 @@ local winConfig = {
 
 - **NOTE:** clicking on `file://` links relies on [urlencode](https://github.com/AquilaIrreale/urlencode)
 - setup function can be called at any time again to change settings at runtime
+
+## Supported langauges
+
+Language servers bellow were tested.
+
+- Bash: `bashls`
+- C/Cpp: `clangd`
+- Java: [`nvim-jdtls`](https://github.com/mfussenegger/nvim-jdtls)
+- Lua: `sumneko_lua`/`lua-language-server` with [`neodev`](https://github.com/folke/neodev.nvim)
+- Typescript/Javascript: `typescript-launguage-server`
+
+<details><summary>
+
+### Screenshots: `with TS` vs. `reform.nvim`
+
+</summary>
+
+- `bashls` ![Bash/sh](https://github.com/JosefLitos/reform.nvim/assets/54900518/8a66cac0-52a9-4672-adae-9c44bc3cf3c4)
+- `clangd` ![C/C++](https://github.com/JosefLitos/reform.nvim/assets/54900518/ccbac42a-f2a6-4ffd-8abd-c3e3d2d81c78)
+- `typescript-language-server` ![Javascript/Typescript](https://github.com/JosefLitos/reform.nvim/assets/54900518/a0e954a4-429f-4d9a-a460-5525678a8c0c)
+- `jdtls` ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
+- `luals`, including Vim-style documentation ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
+</details>

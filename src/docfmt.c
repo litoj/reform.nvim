@@ -82,12 +82,9 @@ static int l_fmt(lua_State* L) {
 			len = end - fmt + 1;
 			printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 #endif
-			fmt             = (char*) realloc(fmt, end - fmt + 1);
-
-			const char* ptr = fmt;
-#ifdef DEBUG
-			char* start = fmt;
-#else
+			char* ptr = fmt = (char*) realloc(fmt, end - fmt + 1);
+			char* start     = fmt;
+#ifndef DEBUG
 			lua_newtable(L);
 #endif
 			for (int j = 1; *fmt; j++, ptr = fmt) {
@@ -100,8 +97,8 @@ static int l_fmt(lua_State* L) {
 				lua_rawseti(L, -2, j);
 #endif
 			}
-#ifdef DEBUG
 			free(start);
+#ifdef DEBUG
 			if (argc < 3) free(doc);
 			return 0;
 #else

@@ -6,7 +6,7 @@ local reform = {}
 
 ---@class reform.docmd.Config
 ---@field public override {convert: reform.Overridable, stylize: reform.Overridable, cmp_doc: reform.Overridable, cmp_sig: reform.Overridable}
----@field public ft table<string,boolean> docs for which `ft` should be reformed (if supported)
+---@field public ft table<string,boolean>|true docs for which `ft` should be reformed (if supported)
 
 ---@class reform.docmd.Defaults: reform.docmd.Config
 ---@field public config reform.docmd.Config
