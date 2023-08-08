@@ -32,7 +32,8 @@ static void add_string(const char** docPtr, char** fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-static const char* types[] = {"string", "any", "(", "Function", "number", "integer", "<", "float"};
+static const char* types[] = {"string",  "any", "(",     "Function", "number",
+                              "integer", "<",   "float", "\"",       "'"};
 static const int typeCnt   = sizeof(types) / sizeof(const char*);
 
 /**
@@ -70,7 +71,11 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				*fmt++         = '(';
 				char isWrapped = *doc == '(';
 				if (isWrapped) *fmt++ = *doc++;
-				if (*doc != ')') do {
+				if (*doc != ')') {
+					char* fmtSave       = fmt;
+					const char* docSave = doc;
+					char noType         = 0;
+					do {
 						if (*doc == ',') { // arg separator
 							*fmt++ = *doc++;
 							*fmt++ = *doc++;
@@ -81,8 +86,18 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 						if (*doc == ':') { // arg type
 							*fmt++ = *doc++;
 							type_fmt(&doc, &fmt);
+						} else {
+							noType = 1;
+							break;
 						}
 					} while (*doc == ',');
+					if (noType) {
+						*docPtr = docSave;
+						*fmtPtr = fmtSave;
+						type_fmt(docPtr, fmtPtr);
+						return;
+					}
+				}
 				*fmt++ = ')';
 				if (*doc++ == ')' && doc[1] == '=' && doc[2] == '>') { // return value
 					if (alike(doc + 4, "void") > 0) {
@@ -121,6 +136,12 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				*fmt++ = '.';
 				*fmt++ = '0';
 				break;
+			case 8:
+			case 9: // string
+				doc--;
+				add_string(&doc, &fmt);
+				doc++;
+				break;
 			default: { // unknown type / value
 				char* fmtTmp = fmt;
 				while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
@@ -129,6 +150,15 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				if (doc[1] == '=') { // skip type info and print value only
 					doc += 3;
 					fmt = fmtTmp;
+				} else if (*doc == '<') { // generics
+					*fmt++ = *doc++;
+					type_fmt(&doc, &fmt);
+					while (*doc == ',') {
+						*fmt++ = *doc++;
+						*fmt++ = ' ';
+						type_fmt(&doc, &fmt);
+					}
+					if (*doc == '>') *fmt++ = *doc++;
 				}
 			}
 		}
@@ -156,7 +186,8 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 	const char* doc = *docPtr;
 	char* fmt       = *fmtPtr;
 	*fmt++          = *doc;
-	int params      = 0; // whether we are in param/arg section of a function definition
+	int params      = 0; // are we in param/arg section of a function
+	int object      = 0; // are we inside object definition ({})
 	while (!alike(++doc, stop) && *doc) {
 		switch (*doc) {
 			case '[': // string [[...]]
@@ -167,6 +198,14 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 			case '"':  // string "..."
 			case '\'': // string '...'
 				add_string(&doc, &fmt);
+				break;
+			case '{':
+				*fmt++ = '{';
+				if (doc[1] == '\n') object++;
+				break;
+			case '}':
+				if (fmt[-1] == '\n' && object) object--;
+				*fmt++ = '}';
 				break;
 			case '(':
 				// check for "function "
@@ -203,7 +242,11 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					*fmt++ = '-';
 				}
 			case ':': // type
-				*fmt++ = ':';
+				if (object) *fmt++ = ':';
+				else {
+					*fmt++ = ' ';
+					*fmt++ = '=';
+				}
 				if (doc[1] == '\n') {
 					doc += 2;
 					while (*doc != '|') doc++;
@@ -226,6 +269,10 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 			case '\\':
 				*fmt++ = '\\';
 				*fmt++ = *++doc;
+				break;
+			case ';':
+				if (doc[1] == '\n') *fmt++ = ',';
+				else *fmt++ = ';';
 				break;
 			case '/': // comment
 				if (doc[1] == '/')
