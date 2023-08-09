@@ -1,3 +1,5 @@
+#include "utils.h"
+
 char* append(char* dst, const char* str) {
 	while (*str) *dst++ = *str++;
 	return dst;
@@ -35,9 +37,9 @@ void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {
 		*fmt++ = '*';
 		*fmt++ = '*';
 		*fmt++ = *kind = *doc++ - 32; // -32 = 'a' -> 'A'
-		while (*doc > ' ') *fmt++ = *doc++;
-		*docPtr = doc;
-		*fmtPtr = append(fmt[-1] == '*' ? fmt - 1 : fmt, "**: ");
+		while ('a' <= *doc && *doc <= 'z') *fmt++ = *doc++;
+		*docPtr = *doc == ' ' ? doc : doc + 1;
+		*fmtPtr = append(fmt, "**: ");
 		return;
 	}
 	if (*kind != *doc) fmt = append(fmt, section);

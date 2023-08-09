@@ -152,6 +152,10 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 					fmt = fmtTmp;
 				} else if (*doc == '<') { // generics
 					*fmt++ = *doc++;
+					if (*doc == '{') {
+						doc--;
+						continue;
+					}
 					type_fmt(&doc, &fmt);
 					while (*doc == ',') {
 						*fmt++ = *doc++;
@@ -212,7 +216,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 				if (fmt[-1] != ' ') {
 					char* fmtTmp = fmt - 1;
 					while (*fmtTmp != '\n' && *fmtTmp != ' ') fmtTmp--;
-					if (*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction") || fmt[-1] == '>') params = 1;
+					if ((*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction")) || fmt[-1] == '>') params = 1;
 				}
 				*fmt++ = '(';
 				break;
@@ -242,7 +246,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					*fmt++ = '-';
 				}
 			case ':': // type
-				if (object) *fmt++ = ':';
+				if (object || params) *fmt++ = ':';
 				else {
 					*fmt++ = ' ';
 					*fmt++ = '=';
@@ -378,8 +382,8 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 		if (*doc == '(') {
 			if (doc[1] == 'm') fmt = append(fmt, "function "); // (method)
 			doc += 5;
-			while (*doc > ' ') doc++;
-			doc++;
+			while (*doc != ')') doc++;
+			if (*++doc == ' ') doc++;
 		} else if (alike(doc, "constructor") > 0) {
 			doc += 12;
 			fmt = append(fmt, "function ");
@@ -466,10 +470,10 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				}
 				*fmt++ = ':';
 			} break;
-			case '@': { // format: '*@param* `name` — desc'
+			case '@': { // format: '*@param* `name` — desc' or '_@param_...'
 				const char* docTmp = doc + 1;
 				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
-				if (*docTmp != '*' || fmt[-1] != '*' || docTmp[1] != ' ') {
+				if ((*docTmp != '*' && *docTmp != '_') || (fmt[-1] != '*' && fmt[-1] != '_') || docTmp[1] != ' ') {
 					*fmt++ = '@';
 					break;
 				} else fmt--;
@@ -478,7 +482,12 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
 				if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
-				else {
+				else if (kind == 'E') { // example
+					fmt = append(fmt, "\n```ts\n");
+					while (*++doc) *fmt++ = *doc;
+					fmt = append(fmt, "```");
+					return fmt;
+				} else {
 					while (*++doc > ' ') *fmt++ = *doc;
 					if (alike(doc, " —") > 0) {
 						doc += 4;
