@@ -451,7 +451,7 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				const char* docTmp = doc;
 				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
 				if (*docTmp <= ' ' || docTmp - doc == 1) *fmt++ = *docTmp;
-				else { // vim references to params as '{param}'
+				else { // references to params as '{param}'
 					fmt[doc - docTmp] = '`';
 					*fmt++            = '`';
 				}
@@ -470,10 +470,10 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				}
 				*fmt++ = ':';
 			} break;
-			case '@': { // format: '*@param* `name` — desc' or '_@param_...'
+			case '@': { // format: '_@param_ — name desc'
 				const char* docTmp = doc + 1;
 				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
-				if ((*docTmp != '*' && *docTmp != '_') || (fmt[-1] != '*' && fmt[-1] != '_') || docTmp[1] != ' ') {
+				if (*docTmp != '_' || fmt[-1] != '_' || docTmp[1] != ' ') {
 					*fmt++ = '@';
 					break;
 				} else fmt--;
@@ -481,7 +481,13 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				resolveKind(&doc, &fmt, &kind);
 				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
-				if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
+				if (kind == 'p' && alike(doc, " — ") > 0) {
+					if (*(doc += 5) != '`') *fmt++ = '`';
+					while (*doc > ' ') *fmt++ = *doc++;
+					if (fmt[-1] != '`') *fmt++ = '`';
+					*fmt++ = ':';
+					if (alike(doc, " -") > 0) doc += 2;
+				} else if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
 				else if (kind == 'E') { // example
 					fmt = append(fmt, "\n```ts\n");
 					while (*++doc) *fmt++ = *doc;
