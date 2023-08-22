@@ -6,9 +6,9 @@
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void add_string(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void add_string(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	while (*doc == ' ' || *doc == '\n') doc++;
 	*fmt++ = *doc;
@@ -40,35 +40,43 @@ static void add_string(const char** docPtr, char** fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-static const char* types[] = {"number",  "string", "any",       "unknown",  "integer",
-                              "boolean", "table",  "[",         "function", "fun(",
-                              "float",   "<",      "dictionary"};
-static const int typeCnt   = sizeof(types) / sizeof(const char*);
-
 /**
  * @brief Format type information to a simpler, better readable format.
  *
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void type_fmt(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void type_fmt(const char **docPtr, char **fmtPtr) {
+	static const char *types[] = {"number",   "string", "any",   "unknown", "integer", "boolean",
+	                              "table",    "{",      "'",     "[[",      "\"",      "[",
+	                              "function", "fun(",   "float", "<"};
+	static const int typeCnt   = sizeof(types) / sizeof(const char *);
+
+	const char *doc            = *docPtr;
+	char *fmt                  = *fmtPtr;
+	int wrap                   = 0;
 	if (fmt[-1] == '=' || fmt[-1] == ',' || fmt[-1] == ':') *fmt++ = ' ';
 	do {
 		if (*doc == '|') *fmt++ = *doc++;
-		while (*doc <= ' ') doc++;
+		while (*doc && *doc <= ' ') doc++;
 		char backTicks = *doc == '`';
 		if (backTicks) doc++;
 		int type = 0, len = 0;
+		while (*doc == '(') {
+			wrap++;
+			*fmt++ = *doc++;
+		}
 		for (; type < typeCnt; type++, len = 0)
 			if ((len = alike(doc, types[type]))) break;
 		doc += len;
-		if (*doc == '[') *fmt++ = '{'; // postscript array (type[])
+		if (*doc == '?') {
+			fmt = append(fmt, "nil|");
+			doc++;
+		}
 		switch (type) {
 			case 0: // number
 				*fmt++ = '0';
-				*fmt++ = 'N';
+				*fmt++ = '.';
 				break;
 			case 1: // string
 				if (doc[1] == '=') {
@@ -89,27 +97,30 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				*fmt++ = '.';
 				break;
 			case 5: // boolean
-				fmt = append(fmt, "true|false");
+				if (doc[1] != '=') fmt = append(fmt, "true|false");
+				else {
+					doc += 3;
+					while ('a' <= *doc && *doc <= 'u') *fmt++ = *doc++;
+				}
 				break;
 			case 6: // table
 				if (*doc == '<') {
 					*fmt++ = '{';
 					doc++;
 					if (*doc != '>') {
-						for (type = 0; type < 4; type++, len = 0)
-							if ((len = alike(doc, types[type]))) break;
-						if (type < 4 && doc[len] != '|') {
-							doc += len;
-							if (type == 3) fmt = append(fmt, "val ="); // string index -> it's a map/dictionary
+						if (alike(doc, "string") > 0) {
+							doc += 6;
+							fmt = append(fmt,
+							             "[\"\"] ="); // string index -> it's a map/dictionary
 						} else {
-							*fmt++ = '['; // indexing with a more compicated type
-							type_fmt(&doc, &fmt);
-							fmt = append(fmt, "] =");
+							int len = alike(doc, "integer");
+							if (len > 0 || (len = alike(doc, "number")) > 0) doc += len;
+							else fmt = append(fmt, "[] =");
 						}
 						if (*doc == '>') { // only indexes specified, no field type
 							if (fmt[-1] == '=') *fmt++ = ' ';
 							*fmt++ = '?';
-						} else { // resolve type of field
+						} else if (*doc == ',') { // resolve type of field
 							doc++;
 							type_fmt(&doc, &fmt);
 						}
@@ -122,7 +133,38 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 					*fmt++ = '}';
 				}
 				break;
-			case 7: // '[' - manually denoted array
+			case 7:
+				*fmt++ = '{';
+				do {
+					if (*doc == ',') *fmt++ = *doc++;
+					while (*doc && *doc <= ' ') *fmt++ = *doc++;
+					if (*doc == '[') {
+						*fmt++ = *doc++;
+						type_fmt(&doc, &fmt);
+						while (*doc != ']') *fmt++ = *doc++;
+						*fmt++ = *doc++;
+					} else if (*doc != '}')
+						while (*doc >= '0' && *doc != ':') *fmt++ = *doc++;
+					else break;
+					*fmt++ = ' ';
+					*fmt++ = '=';
+					if (*doc == ':') {
+						doc += 2;
+						type_fmt(&doc, &fmt);
+					} else fmt = append(fmt, " ?");
+				} while (*doc == ',');
+				while (*doc && *doc <= ' ') *fmt++ = *doc++;
+				if (*doc == '}') doc++;
+				*fmt++ = '}';
+				break;
+			case 8: // string value
+			case 9:
+			case 10:
+				doc -= len;
+				add_string(&doc, &fmt);
+				doc++;
+				break;
+			case 11: // '[' - manually denoted array
 				*fmt++ = '{';
 				if (*doc != ']') // table/array has data inside
 					do {
@@ -132,10 +174,10 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				*fmt++ = '}';
 				doc++;
 				break;
-			case 8: // function
+			case 12: // function
 				fmt = append(fmt, "fun()");
 				break;
-			case 9: // fun( - function with specified args
+			case 13: // fun( - function with specified args
 				fmt = append(fmt, "fun(");
 				if (*doc != ')') do {
 						if (*doc == ',') { // arg separator
@@ -152,17 +194,16 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 					} while (*doc == ',');
 				*fmt++ = ')';
 				if (*doc++ == ')' && *doc == ':') { // return value
-					doc++;
-					fmt = append(fmt, " -> ");
+					*fmt++ = *doc++;
 					type_fmt(&doc, &fmt);
 				}
 				break;
-			case 10: // float
+			case 14: // float
 				*fmt++ = '0';
 				*fmt++ = '.';
 				*fmt++ = '0';
 				break;
-			case 11: // generics
+			case 15: // generics
 				*fmt++ = '<';
 				while (('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9')) *fmt++ = *doc++;
 				if (*doc == ':') {
@@ -176,28 +217,35 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 					doc += 2;
 				}
 				break;
-			case 12: // dictionary
-				fmt = append(fmt, "{val = \"\"}");
-				break;
 			default: { // unknown type / value (nil, ...)
-				char* fmtTmp = fmt;
+				char *fmtTmp = fmt;
+				int arr      = 0;
 				while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
-				       ('.' <= *doc && *doc <= '9'))
+				       ('.' <= *doc && *doc <= '9')) {
+					if (*doc == ']' && !arr--) break;
+					else if (*doc == '[') arr++;
 					*fmt++ = *doc++;
+				}
 				if (doc[1] == '=') { // skip type info and print value only
 					doc += 3;
 					fmt = fmtTmp;
 				}
 			}
 		}
+		while (wrap && *doc == ')') {
+			wrap--;
+			*fmt++ = *doc++;
+		}
 		if (*doc == '[' && doc[1] == ']') {
-			*fmt++ = '}';
-			doc += 2;
+			*fmt++ = *doc++;
+			*fmt++ = *doc++;
 		}
 		if (backTicks && *doc == '`') {
 			doc++;
 			while (*doc == ' ' || *doc == '\n') doc++;
 		}
+		*docPtr = doc;
+		while (*doc && *doc <= ' ') doc++;
 	} while (*doc == '|');
 
 	*docPtr = doc;
@@ -211,10 +259,10 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
  * @param fmtPtr ptr to buffer for formatted docs
  * @param stop code-ending sequence
  */
-static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
+static void code_fmt(const char **docPtr, char **fmtPtr, const char *stop) {
 	if (!**docPtr) return;
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	*fmt++          = *doc;
 	int params      = 0; // whether we are in param/arg section of a function definition
 	while (!alike(++doc, stop) && *doc) {
@@ -231,7 +279,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 			case '(':
 				// check for "function "
 				if (fmt[-1] != ' ' || (fmt[-2] == 'n' && fmt[-9] == 'f')) {
-					char* fmtTmp = fmt - 1;
+					char *fmtTmp = fmt - 1;
 					while (*fmtTmp != '\n' && *fmtTmp != ' ') fmtTmp--;
 					if (*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction")) {
 						if (fmt[-1] == ' ') *fmt++ = '_'; // give a name to unnamed function
@@ -254,7 +302,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					doc += 2;
 					*fmt++             = ' ';
 					*fmt++             = ' ';
-					const char* docTmp = doc + 1;
+					const char *docTmp = doc + 1;
 					while ('0' <= *docTmp && *docTmp <= '9') docTmp++;
 					if (*docTmp != '.') break;
 					doc    = docTmp;
@@ -273,11 +321,14 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					while (*doc != '|') doc++;
 				}
 				if (doc[1] == ' ') {
+					int isNil = fmt[-1] == '?';
+					if (isNil) fmt--;
 					if (params) *fmt++ = ':';
 					else {
 						*fmt++ = ' ';
 						*fmt++ = '=';
 					}
+					if (isNil) fmt = append(fmt, " nil|");
 					doc++;
 					type_fmt(&doc, &fmt);
 					doc--;
@@ -311,15 +362,27 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 	*fmtPtr = fmt;
 }
 
+static void param_fmt_default_value(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	if (*doc == ',' && doc[1] == ' ') doc += 2;
+	if (alike(doc, "default") <= 0) return;
+	doc += 8;
+	char *fmt = append(*fmtPtr, "` = `");
+	while (*doc && (*doc != ')' || (doc[1] > ' ' && doc[1] != ':'))) *fmt++ = *doc++;
+	*docPtr = doc;
+	*fmtPtr = fmt;
+}
+
 /**
- * @brief Format a list item entry as a parameter. Does nothing if item is not a param entry.
+ * @brief Format a list item entry as a parameter. Does nothing if item is not a
+ * param entry.
  *
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void param_fmt(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void param_fmt(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 
 	if (*doc == '|') return;
 	else if (*doc == '"') {
@@ -334,67 +397,73 @@ static void param_fmt(const char** docPtr, char** fmtPtr) {
 			*fmt++   = ':';
 			doc++;
 		}
-	} else {
-		if (*doc == '{') doc++;
-		if ('A' <= *doc && *doc <= 'Z') return;
-		*fmt++ = '`';
-		while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
-		       ('.' <= *doc && *doc <= '9') || *doc == '\\') {
-			if (*doc == '\\') doc++;
-			*fmt++ = *doc++;
+		*docPtr = doc;
+		*fmtPtr = fmt;
+		return;
+	}
+	if (*doc == '{') doc++;
+	if ('A' <= *doc && *doc <= 'Z') return;
+	*fmt++ = '`';
+	while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
+	       ('.' <= *doc && *doc <= '9') || *doc == '\\') {
+		if (*doc == '\\') doc++;
+		*fmt++ = *doc++;
+	}
+	*fmt++ = '`';
+	int ok = *doc == '}' || *doc == ':';
+	if (*doc == '}') doc += doc[2] == ' ' ? 2 : 1;
+	else if (ok ? doc[1] != ' ' : *doc != ' ' || doc[1] != '(') return; // it's not a param
+
+	if (*doc == ':') {
+		doc++;
+		ok = 2;
+	}
+	if (*doc == ' ' && doc[1] == '(') { // contains type info
+		if (ok) {
+			*docPtr = doc;
+			*fmtPtr = fmt;
+		}
+		int match = alike(doc + 2, "optional)");
+		if (match) {
+			if (match < 0) return;
+			if (!ok) ok = 1;
+			doc += 11;
+			*fmt++  = '?';
+			*docPtr = doc;
+			*fmtPtr = fmt;
+			return;
+		}
+		fmt = append(fmt, " (`");
+		doc += 2;
+		param_fmt_default_value(&doc, &fmt); // when only default value is given
+		type_fmt(&doc, &fmt);
+		param_fmt_default_value(&doc, &fmt);
+		if (*doc++ != ')' || !*doc || (*doc > ' ' && *doc != ':')) {
+			if (ok) *(*fmtPtr)++ = ':'; // param without type info
+			return;
 		}
 		*fmt++ = '`';
-		int ok = *doc == '}' || *doc == ':';
-		if (*doc == '}') doc += doc[2] == ' ' ? 2 : 1;
-		else if (ok ? doc[1] != ' ' : *doc != ' ' || doc[1] != '(') return; // it's not a param
-
+		*fmt++ = ')';
 		if (*doc == ':') {
 			doc++;
 			ok = 2;
 		}
-		if (*doc == ' ' && doc[1] == '(') { // contains type info
-			if (ok) {
-				*docPtr = doc;
-				*fmtPtr = fmt;
-			}
-			int match = alike(doc + 2, "optional)");
-			if (match) {
-				if (match < 0) return;
-				if (!ok) ok = 1;
-				doc += 11;
-				*fmt++ = '?';
-			} else {
-				fmt = append(fmt, " (`");
-				doc += 2;
-				type_fmt(&doc, &fmt);
-				*fmt++ = '`';
-				*fmt++ = ')';
-				if (*doc++ != ')' || !*doc || (*doc > ' ' && *doc != ':')) {
-					if (ok) *(*fmtPtr)++ = ':'; // param without type info
-					return;
-				}
-				if (*doc == ':') {
-					doc++;
-					ok = 2;
-				}
-				if ((ok > 1 ? alike(doc, " (optional)") : alike(doc, " optional")) > 0) {
-					doc += ok > 1 ? 11 : 10;
-					*fmt++ = '?';
-				} else if (!ok && *doc != '\n') return;
-			}
-		} else if (doc[-1] == '}') doc++;
+		if ((ok > 1 ? alike(doc, " (optional)") : alike(doc, " optional")) > 0) {
+			doc += ok > 1 ? 11 : 10;
+			*fmt++ = '?';
+		} else if (!ok && *doc != '\n') return;
+	} else if (doc[-1] == '}') doc++;
 
-		if (*doc == ':') doc++;
-		*fmt++ = ':';
-	}
+	if (*doc == ':') doc++;
+	*fmt++  = ':';
 
 	*docPtr = doc;
 	*fmtPtr = fmt;
 }
 
-char* lua_fmt(const char* doc, char* fmt, int len) {
-	const char* docEnd = doc + len;
-	char* fmt0         = fmt; // for checking beginning of output
+char *lua_fmt(const char *doc, char *fmt, int len) {
+	const char *docEnd = doc + len;
+	char *fmt0         = fmt; // for checking beginning of output
 	if (alike(doc, "```lua\n") > 0) {
 		fmt = append(fmt, "```lua\n");
 		doc += 7;
@@ -436,8 +505,9 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 			case '<': // code with '<pre>'
 				if (*doc != '`' && alike(doc + 1, "pre>") <= 0) *fmt++ = *doc;
 				else {
-					const char* end = *doc == '`' ? "```" : "</pre>";
-					fmt             = append(fmt, "```");
+					const char *end = *doc == '`' ? "```" : "</pre>";
+					while (*--fmt == ' ') {}
+					fmt = append(fmt + 1, "```");
 					if (*(doc += (*doc == '`' ? 3 : 5)) != '\n')
 						while (*doc > '\n') *fmt++ = *doc++;
 					else fmt = append(fmt, "lua");
@@ -454,7 +524,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				break;
 			case '|': // vim help-page-style links '|text|'
 				if (doc[1] != ' ') {
-					char* fmtTmp = fmt;
+					char *fmtTmp = fmt;
 					*fmt++       = '[';
 					while (*++doc != '|' && *doc != ' ' && *doc != '\n') *fmt++ = *doc;
 					if (*doc != '|') {
@@ -477,7 +547,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				} else *fmt++ = '~';
 				break;
 			case '{': {
-				const char* docTmp = doc;
+				const char *docTmp = doc;
 				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
 				if (*docTmp <= ' ' || docTmp - doc == 1) *fmt++ = *docTmp;
 				else { // vim references to params as '{param}'
@@ -512,10 +582,12 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 						doc--;
 					}
 				} else { // highlight other section candidates - capital first letter
-					char* fmtTmp = fmt - 1;
+					char *fmtTmp = fmt - 1;
 					while (fmtTmp > fmt0 && ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
-					if (*fmtTmp >= 'A' && *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
-					  (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' || alike(fmtTmp - 2, "\n ") > 0)) {
+					if (*fmtTmp >= 'A' &&
+            *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
+            (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' ||
+             alike(fmtTmp - 2, "\n ") > 0)) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 						*++fmtTmp = '*';
 						*++fmtTmp = '*';
@@ -526,7 +598,7 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				}
 				break;
 			case '@': { // format: '@*param* `name` — desc'
-				const char* docTmp = doc + 2;
+				const char *docTmp = doc + 2;
 				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
 				if (*docTmp != '*' || doc[1] != '*' || docTmp[1] != ' ') {
 					*fmt++ = '@';
@@ -567,8 +639,8 @@ char* lua_fmt(const char* doc, char* fmt, int len) {
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
 				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
-				      doc[j + 1] == ' ') || // param description
-				  alike(doc + j, "• ") > 0) {
+           doc[j + 1] == ' ') || // param description
+          alike(doc + j, "• ") > 0) {
 					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
 						doc += indent[0] = j;
 						indent[1] = indent[2] = 0;

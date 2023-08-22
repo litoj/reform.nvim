@@ -6,9 +6,9 @@
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void add_string(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void add_string(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	while (*doc == ' ' || *doc == '\n') doc++;
 	*fmt++ = *doc;
@@ -32,9 +32,9 @@ static void add_string(const char** docPtr, char** fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-static const char* types[] = {"string",  "any", "(",     "Function", "number",
-                              "integer", "<",   "float", "\"",       "'"};
-static const int typeCnt   = sizeof(types) / sizeof(const char*);
+static const char *types[] = {"string",  "any",   "(",     "Function", "number",
+                              "integer", "never", "float", "\"",       "'"};
+static const int typeCnt   = sizeof(types) / sizeof(const char *);
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -42,9 +42,9 @@ static const int typeCnt   = sizeof(types) / sizeof(const char*);
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void type_fmt(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void type_fmt(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	if (fmt[-1] == '=' || fmt[-1] == '>' || fmt[-1] == ':') *fmt++ = ' ';
 	do {
 		if (*doc == '|') *fmt++ = *doc++;
@@ -72,8 +72,8 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				char isWrapped = *doc == '(';
 				if (isWrapped) *fmt++ = *doc++;
 				if (*doc != ')') {
-					char* fmtSave       = fmt;
-					const char* docSave = doc;
+					char *fmtSave       = fmt;
+					const char *docSave = doc;
 					char noType         = 0;
 					do {
 						if (*doc == ',') { // arg separator
@@ -115,21 +115,12 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				fmt = append(fmt, "()=>_");
 				break;
 			case 4: // number
-				*fmt++ = '0';
-				*fmt++ = 'n';
-				break;
 			case 5: // integer
 				*fmt++ = '0';
 				*fmt++ = '.';
 				break;
-			case 6: // generics
-				*fmt++ = '<';
-				while (('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9')) *fmt++ = *doc++;
-				if (*doc == ':') {
-					*fmt++ = *doc++;
-					type_fmt(&doc, &fmt);
-				}
-				*fmt++ = *doc++;
+			case 6:                       // never
+				fmt = append(fmt, "NEVER"); // TODO: generics only use these -> catch in code block
 				break;
 			case 7: // float
 				*fmt++ = '0';
@@ -143,7 +134,7 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				doc++;
 				break;
 			default: { // unknown type / value
-				char* fmtTmp = fmt;
+				char *fmtTmp = fmt;
 				while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
 				       ('.' <= *doc && *doc <= '9'))
 					*fmt++ = *doc++;
@@ -166,7 +157,7 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
 				}
 			}
 		}
-		while (*doc == '[') {
+		while (*doc == '[' && doc[1] == ']') {
 			*fmt++ = '[';
 			*fmt++ = ']';
 			doc += 2;
@@ -185,10 +176,10 @@ static void type_fmt(const char** docPtr, char** fmtPtr) {
  * @param fmtPtr ptr to buffer for formatted docs
  * @param stop code-ending sequence
  */
-static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
+static void code_fmt(const char **docPtr, char **fmtPtr, const char *stop) {
 	if (!**docPtr) return;
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	*fmt++          = *doc;
 	int params      = 0; // are we in param/arg section of a function
 	int object      = 0; // are we inside object definition ({})
@@ -214,7 +205,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 			case '(':
 				// check for "function "
 				if (fmt[-1] != ' ') {
-					char* fmtTmp = fmt - 1;
+					char *fmtTmp = fmt - 1;
 					while (*fmtTmp != '\n' && *fmtTmp != ' ') fmtTmp--;
 					if ((*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction")) || fmt[-1] == '>') params = 1;
 				}
@@ -239,7 +230,7 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
 					doc += 2;
 					*fmt++             = ' ';
 					*fmt++             = ' ';
-					const char* docTmp = doc + 1;
+					const char *docTmp = doc + 1;
 					while ('0' <= *docTmp && *docTmp <= '9') docTmp++;
 					if (*docTmp != '.') break;
 					doc    = docTmp;
@@ -298,9 +289,9 @@ static void code_fmt(const char** docPtr, char** fmtPtr, const char* stop) {
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void param_fmt(const char** docPtr, char** fmtPtr) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+static void param_fmt(const char **docPtr, char **fmtPtr) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 
 	if (*doc == '|') return;
 	else if (*doc == '"') {
@@ -373,17 +364,23 @@ static void param_fmt(const char** docPtr, char** fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-char* typescript_fmt(const char* doc, char* fmt, int len) {
-	const char* docEnd = doc + len;
-	char* fmt0         = fmt; // for checking beginning of output
+char *typescript_fmt(const char *doc, char *fmt, int len) {
+	const char *docEnd = doc + len;
+	char *fmt0         = fmt; // for checking beginning of output
 	if (alike(doc, "```typescript\n") > 0) {
 		fmt = append(fmt, "```ts\n");
 		doc += 14;
 		if (*doc == '(') {
-			if (doc[1] == 'm') fmt = append(fmt, "function "); // (method)
-			doc += 5;
-			while (*doc != ')') doc++;
-			if (*++doc == ' ') doc++;
+			if (doc[1] == 'm') {
+				fmt = append(fmt, "function"); // (method)
+				doc += 8;
+			} else {
+				*fmt++ = '/';
+				*fmt++ = '*';
+				while (*++doc != ')') *fmt++ = *doc;
+				fmt = append(fmt, "*/");
+				doc++;
+			}
 		} else if (alike(doc, "constructor") > 0) {
 			doc += 12;
 			fmt = append(fmt, "function ");
@@ -438,7 +435,7 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				break;
 			case '|': // vim help-page-style links '|text|'
 				if (doc[1] != ' ') {
-					char* fmtTmp = fmt;
+					char *fmtTmp = fmt;
 					*fmt++       = '[';
 					while (*++doc != '|' && *doc != ' ' && *doc != '\n') *fmt++ = *doc;
 					if (*doc != '|') {
@@ -448,7 +445,7 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				} else *fmt++ = '|';
 				break;
 			case '{': {
-				const char* docTmp = doc;
+				const char *docTmp = doc;
 				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
 				if (*docTmp <= ' ' || docTmp - doc == 1) *fmt++ = *docTmp;
 				else { // references to params as '{param}'
@@ -458,7 +455,7 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				doc = docTmp;
 			} break;
 			case ':': { // highlight other section candidates - capital first letter
-				char* fmtTmp = fmt - 1;
+				char *fmtTmp = fmt - 1;
 				while (fmtTmp > fmt0 && ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
 				if (*fmtTmp >= 'A' && *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
 					  (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' || alike(fmtTmp - 2, "\n ") > 0)) {
@@ -471,7 +468,7 @@ char* typescript_fmt(const char* doc, char* fmt, int len) {
 				*fmt++ = ':';
 			} break;
 			case '@': { // format: '_@param_ — name desc'
-				const char* docTmp = doc + 1;
+				const char *docTmp = doc + 1;
 				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
 				if (*docTmp != '_' || fmt[-1] != '_' || docTmp[1] != ' ') {
 					*fmt++ = '@';

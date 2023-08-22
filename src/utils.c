@@ -1,22 +1,22 @@
 #include "utils.h"
 
-char* append(char* dst, const char* str) {
+char *append(char *dst, const char *str) {
 	while (*str) *dst++ = *str++;
 	return dst;
 }
 
-int alike(const char* str, const char* cmp) {
-	const char* from = cmp;
+int alike(const char *str, const char *cmp) {
+	const char *from = cmp;
 	while (*cmp && *cmp == *str++) cmp++;
 	return *cmp ? 0 : cmp - from;
 }
 
-void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {
-	const char* doc = *docPtr;
-	char* fmt       = *fmtPtr;
+void resolveKind(const char **docPtr, char **fmtPtr, char *kind) {
+	const char *doc = *docPtr;
+	char *fmt       = *fmtPtr;
 	// we rely on parsers to catch `@a` and `@p` themselves
 	if (!*kind && !alike(doc, "brief")) *fmt++ = '\n';
-	const char* section;
+	const char *section;
 	int skip;
 	if ((skip = alike(doc, "param"))) section = "**Parameters:**\n";
 	else if ((skip = alike(doc, "return"))) section = "**Returns:**\n";
@@ -37,7 +37,7 @@ void resolveKind(const char** docPtr, char** fmtPtr, char* kind) {
 		*fmt++ = '*';
 		*fmt++ = '*';
 		*fmt++ = *kind = *doc++ - 32; // -32 = 'a' -> 'A'
-		while ('a' <= *doc && *doc <= 'z') *fmt++ = *doc++;
+		while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= 'Z')) *fmt++ = *doc++;
 		*docPtr = *doc == ' ' ? doc : doc + 1;
 		*fmtPtr = append(fmt, "**: ");
 		return;

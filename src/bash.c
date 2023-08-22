@@ -1,12 +1,10 @@
 #include "utils.h"
 
-char* bash_fmt(const unsigned char* doc, char* fmt, int len) {
-	if (alike((const char*) doc, "``` man\n") > 0) {
-		while (doc[len] != '`') len--;
-		doc += 6;
-		len -= 10;
-	}
-	const unsigned char* docEnd = doc + len;
+char *bash_fmt(const unsigned char *doc, char *fmt, int len) {
+	while (doc[len] != '`') len--;
+	doc += 6;
+	len -= 10;
+	const unsigned char *docEnd = doc + len;
 
 	int indent[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, lvl = 0;
 	char separated = 0;
@@ -77,7 +75,7 @@ char* bash_fmt(const unsigned char* doc, char* fmt, int len) {
 					if (ilvl) {
 						int j = 0;
 						if (separated) {
-							const unsigned char* tmp = doc;
+							const unsigned char *tmp = doc;
 							while (*tmp > ' ' || (*tmp > '\n' && (tmp[1] == ' ' || tmp[-1] != ' '))) tmp++;
 							if (*tmp == '\n' && *++tmp != '\n')
 								for (; *tmp == ' '; tmp++, j++) {}

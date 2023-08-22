@@ -1,30 +1,30 @@
 -- originally made by [nvim-lsp-extras](https://github.com/seblj/nvim-lsp-extras/blob/master/lua/nvim-lsp-extras/treesitter_hover/markdown.lua#L148)
 local M = {
 	---@type reform.Keymappings
-	default = {{{"", "i"}, "<C-LeftMouse>"}, {"n", "gl"}},
+	default = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gl' } },
 	handlers = {},
 }
 function M.handlers.open_link(line, col)
 	local hover = { -- using array to keep order of testing
 		{
-			"%[.-%]%((https?://[^)]-)%)",
-			function(url) vim.fn.jobstart("xdg-open " .. url, {detach = true}) end,
+			'%[.-%]%((https?://[^)]-)%)',
+			function(url) vim.fn.jobstart('xdg-open ' .. url, { detach = true }) end,
 		},
 		{
-			"%[.-%]%(file://([^)]-)%)",
+			'%[.-%]%(file://([^)]-)%)',
 			function(file) -- relying on [urlencode](https://github.com/AquilaIrreale/urlencode)
-				file = vim.fn.system("urlencode -d", file)
+				file = vim.fn.system('urlencode -d', file)
 				vim.cmd.e(file)
 			end,
 		},
-		{"%[.-%]%(([^)]-)%)", vim.cmd.e},
-		{"%[([^%] ]-)%][^(%]]", vim.cmd.help},
-		{"|([^% ]]-)|", vim.cmd.help},
+		{ '%[.-%]%(([^)]-)%)', vim.cmd.e },
+		{ '%[([^%] ]-)%][^(%]]', vim.cmd.help },
+		{ '|([^% ]]-)|', vim.cmd.help },
 		{
-			"(https?://[/#!.:&?=+0-9A-Za-z_-]+)",
-			function(url) vim.fn.jobstart("xdg-open '" .. url .. "'", {detach = true}) end,
+			'(https?://[/#!.:&?=+0-9A-Za-z_-]+)',
+			function(url) vim.fn.jobstart("xdg-open '" .. url .. "'", { detach = true }) end,
 		},
-		{"(~?[0-9A-Za-z._-]*/[/0-9A-Za-z._-]*)", vim.cmd.e},
+		{ '(~?[0-9A-Za-z._-]*/[/0-9A-Za-z._-]*)', vim.cmd.e },
 	}
 
 	for _, data in ipairs(hover) do
@@ -36,7 +36,7 @@ function M.handlers.open_link(line, col)
 			if from then from = to + 1 end
 		end
 	end
-	vim.notify("No link found", vim.log.levels.INFO)
+	vim.notify('No link found', vim.log.levels.INFO)
 end
 
 function M.handlers.key()
@@ -45,8 +45,10 @@ end
 
 function M.handlers.mouse()
 	local data = vim.fn.getmousepos()
-	M.handlers.open_link(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(data.winid),
-			                     data.line - 1, data.line, true)[1], data.column)
+	M.handlers.open_link(
+		vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(data.winid), data.line - 1, data.line, true)[1],
+		data.column
+	)
 end
 
 ---@param config boolean|reform.Keymappings set your custom shortcuts or disable the feature
@@ -54,7 +56,7 @@ return function(config)
 	if config then config = M.default end
 	if config then
 		for _, bind in ipairs(config) do
-			vim.keymap.set(bind[1], bind[2], M.handlers[bind[2]:match("Mouse") and "mouse" or "key"])
+			vim.keymap.set(bind[1], bind[2], M.handlers[bind[2]:match 'Mouse' and 'mouse' or 'key'])
 		end
 	end
 	return M

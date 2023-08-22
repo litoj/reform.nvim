@@ -7,9 +7,9 @@
  * @param fmtPtr ptr to buffer for formatted docs
  * @param type '>' or ' '
  */
-static void java_code_fmt(const char** docPtr, char** fmtPtr, char type) {
-	const char* doc = *docPtr;
-	char* fmt       = append(*fmtPtr - ((*fmtPtr)[-2] == '\n'), "```java\n");
+static void java_code_fmt(const char **docPtr, char **fmtPtr, char type) {
+	const char *doc = *docPtr;
+	char *fmt       = append(*fmtPtr - ((*fmtPtr)[-2] == '\n'), "```java\n");
 	int skip        = 1;
 	while (doc[skip] == ' ') skip++; // strip indent to keep ours' consistent
 	while (1) {
@@ -23,26 +23,24 @@ static void java_code_fmt(const char** docPtr, char** fmtPtr, char type) {
 	*fmtPtr = append(fmt, "```");
 }
 
-char* java_fmt(const char* doc, char* fmt, int len) {
-	const char* docEnd = doc + len;
+char *java_fmt(const char *doc, char *fmt, int len) {
+	const char *docEnd = doc + len;
 	if (!alike(doc, "```java")) {
-		const char* docTmp = doc;
+		const char *docTmp = doc;
 		while (*docTmp != '\n') docTmp++;
 		if (docTmp[1] != '\n') {
 			fmt = append(fmt, "```java\n");
 			// fix TS highlighting (recognize method/class with 'x<y>' `type`)
 			// this cannot fix method identifier highlight, only `type` and `parameter`
 			int cont           = 0;
-			const char* docTmp = doc + 2;
+			const char *docTmp = doc + 2;
 			while (*docTmp > '\n' && cont >= 0) {
 				switch (*docTmp++) {
 					case '(':                         // will get here only if '<' was found
 						fmt  = append(fmt, "default "); // any method keyword for TS to recognize method
 						cont = -1;
 						break;
-					case '<':
-						cont = 1;
-						break;
+					case '<': cont = 1; break;
 					case ' ':
 						if (!cont) cont = -1;
 						break;
@@ -96,8 +94,7 @@ char* java_fmt(const char* doc, char* fmt, int len) {
 					}
 				}
 			} break;
-			default:
-				*fmt++ = *doc;
+			default: *fmt++ = *doc;
 		}
 	}
 	return fmt;
