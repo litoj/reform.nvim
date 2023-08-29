@@ -219,6 +219,14 @@ static void code_fmt(const char **docPtr, char **fmtPtr, const char *stop) {
 						*fmt++ = ':';
 						doc += 3;
 						type_fmt(&doc, &fmt);
+						if (alike(doc, " is ") > 0) {
+							fmt = append(fmt, " is ");
+							doc += 4;
+							type_fmt(&doc, &fmt);
+							*fmt++ = '{';
+							*fmt++ = '}';
+						}
+						doc--;
 					} else if (doc[2] == '=') break;
 					if (*doc == '\n') fmt = append(fmt, " {}");
 				}
@@ -371,7 +379,12 @@ char *typescript_fmt(const char *doc, char *fmt, int len) {
 		fmt = append(fmt, "```ts\n");
 		doc += 14;
 		if (*doc == '(') {
-			if (doc[1] == 'm') {
+			if (doc[1] == 'a') {
+				const char *docTmp = doc += 9;
+				while (*doc > ' ' && *doc != '(') doc++;
+				if (*doc == '(') fmt = append(fmt, "function ");
+				doc = docTmp - 1;
+			} else if (doc[1] == 'm') {
 				fmt = append(fmt, "function"); // (method)
 				doc += 8;
 			} else {

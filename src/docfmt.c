@@ -72,7 +72,7 @@ static int l_fmt(lua_State *L) {
 		if (match > 0 && !ft[match]) {
 			if (alike(doc, "```") > 0 && //
 			alike(doc + len - 4, "\n```") > 0 && 
-			alike(doc + 3, avail[i].codesign) <= 0)
+			alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
 				break; // don't parse file preview
 			char *fmt = (char *) malloc(len + 50);
 			char *end = avail[i].parser(doc, fmt, len);

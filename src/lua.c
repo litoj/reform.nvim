@@ -548,8 +548,8 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 				break;
 			case '{': {
 				const char *docTmp = doc;
-				while (*docTmp != ' ' && *docTmp != '}') *fmt++ = *docTmp++;
-				if (*docTmp <= ' ' || docTmp - doc == 1) *fmt++ = *docTmp;
+				while (*docTmp > ' ' && *docTmp <= 'z') *fmt++ = *docTmp++;
+				if (*docTmp != '}' || docTmp - doc == 1) *fmt++ = *docTmp;
 				else { // vim references to params as '{param}'
 					fmt[doc - docTmp] = '`';
 					*fmt++            = '`';
