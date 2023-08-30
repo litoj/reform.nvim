@@ -1,14 +1,11 @@
 local M = {
 	default = vim.ui.select,
-	---@type reform.winConfig
-	config = {
-		title_pos = 'center',
-		title = { { '[', 'FloatBorder' }, { '', 'FloatTitle' }, { ']', 'FloatBorder' } },
-		relative = 'cursor',
-		border = 'rounded',
-		col = -2,
-		row = 1,
-	},
+	---@type reform.WinConfig
+	config = vim.tbl_extend(
+		'force',
+		{ col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter' },
+		require('reform.util').winConfig
+	),
 }
 
 function M.override(items, opts, on_choice)
@@ -28,11 +25,9 @@ function M.override(items, opts, on_choice)
 	vim.bo[buf].modifiable = false
 	vim.cmd.stopinsert()
 
-	local win = require('reform.util').mkWin(
-		buf,
-		vim.tbl_extend('force', { width = width, height = #items }, M.config),
-		opts.prompt
-	)
+	M.config.height = #items
+	M.config.width = width
+	local win = require('reform.util').mkWin(buf, M.config, opts.prompt)
 	vim.api.nvim_win_set_cursor(win, { 1, 1 })
 	vim.api.nvim_create_autocmd('CursorMoved', {
 		buffer = buf,
@@ -44,19 +39,13 @@ function M.override(items, opts, on_choice)
 	vim.cmd.stopinsert()
 
 	vim.cmd [[
-		syn match SelectNum /-\?\d\+/
-		syn match SelectId /\d\+/ contained 
-		syn match SelectOpt /^\[\d\+\] / contains=SelectId
-		syn region SelectString start=/"/ skip=/'/ end=/"/ contained
-		syn region SelectString start=/'/ skip=/"/ end=/'/ contained
-		syn match SelectVar /\w\+/ contained
-		syn region SelectVarDelim start="`" end="`" contains=SelectVar
-		hi def link SelectNum Number
-		hi def link SelectId Repeat
-		hi def link SelectOpt Delimiter
-		hi def link SelectString String
-		hi def link SelectVar Variable
-		hi def link SelectVarDelim Delimiter
+		syn match Number /-\?\d\+/
+		syn match Id /\d\+/ contained 
+		syn match Delimiter /^\[\d\+\] / contains=Id
+		syn region String start=/"/ skip=/'/ end=/"/ contained
+		syn region String start=/'/ skip=/"/ end=/'/ contained
+		syn match Variable /\w\+/ contained
+		syn region VarDelim start="`" end="`" contains=Variable
 	]]
 
 	callback = function(i)
@@ -73,7 +62,7 @@ function M.override(items, opts, on_choice)
 	)
 end
 
----@param config reform.Overridable|reform.winConfig
+---@param config reform.Overridable|reform.WinConfig
 return function(config)
 	if config then
 		if type(config) == 'function' then

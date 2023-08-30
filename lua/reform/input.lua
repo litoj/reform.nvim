@@ -1,13 +1,17 @@
 local M = {
 	default = vim.ui.input,
-	---@type reform.winConfig
+	---@type reform.input.Config
 	config = {
-		title_pos = 'center',
-		title = { { '[', 'FloatBorder' }, { '', 'FloatTitle' }, { ']', 'FloatBorder' } },
-		relative = 'cursor',
-		border = 'rounded',
-		height = 1,
-		row = -3,
+		window = vim.tbl_extend('force', {
+			height = 1,
+			row = -3,
+		}, require('reform.util').winConfig),
+		keymaps = {
+			cancel = { '<Esc>', '<C-q>' },
+			confirm = { '<CR>' },
+			histPrev = { '<Up>', '<M-k>' },
+			histNext = { '<Down>', '<M-j>' },
+		},
 	},
 }
 
@@ -17,15 +21,10 @@ function M.override(opts, on_confirm)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].filetype = 'ui-input'
 	local width = #opts.prompt > #default and #opts.prompt + 2 or #default
-	local win = require('reform.util').mkWin(
-		buf,
-		vim.tbl_extend(
-			'force',
-			{ col = -width / 2, width = width + (#default > 10 and #default * 2 or 20) },
-			M.config
-		),
-		opts.prompt
-	)
+
+	M.config.window.col = -width / 2
+	M.config.window.width = width + (#default > 10 and #default * 2 or 20)
+	local win = require('reform.util').mkWin(buf, M.config.window, opts.prompt)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
 	vim.cmd.startinsert { bang = true }
@@ -39,40 +38,45 @@ function M.override(opts, on_confirm)
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
 		if confirmed then
-			if #text > 3 then vim.fn.histadd('@', text) end
+			if #text > 3 and not opts.prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
 			on_confirm(text)
 		else
 			on_confirm(opts.cancelreturn == nil and '' or opts.cancelreturn)
 		end
 	end
-	vim.keymap.set('i', '<C-q>', callback, { buffer = buf })
-	vim.keymap.set('i', '<Esc>', callback, { buffer = buf })
-	vim.keymap.set('i', '<CR>', function() callback(true) end, { buffer = buf })
-	vim.keymap.set('i', '<Up>', function()
-		if histpos == last + 1 then typed = vim.api.nvim_get_current_line() end
-		for i = histpos - 1, 1, -1 do
-			local str = vim.fn.histget('@', i)
-			if str:find(typed, 1, true) then
-				histpos = i
-				histUpdate = true
-				vim.api.nvim_set_current_line(str)
-				return
+	for name, action in pairs {
+		cancel = callback,
+		confirm = function() callback(true) end,
+		histPrev = function()
+			if histpos == last + 1 then typed = vim.api.nvim_get_current_line() end
+			for i = histpos - 1, 1, -1 do
+				local str = vim.fn.histget('@', i)
+				if str:find(typed, 1, true) then
+					histpos = i
+					histUpdate = true
+					vim.api.nvim_set_current_line(str)
+					return
+				end
 			end
-		end
-	end, { buffer = buf })
-	vim.keymap.set('i', '<Down>', function()
-		if histpos == last + 1 then return end
-		for i = histpos + 1, last do
-			local str = vim.fn.histget('@', i)
-			if str:find(typed, 1, true) then
-				histpos = i
-				histUpdate = true
-				vim.api.nvim_set_current_line(str)
-				return
+		end,
+		histNext = function()
+			if histpos == last + 1 then return end
+			for i = histpos + 1, last do
+				local str = vim.fn.histget('@', i)
+				if str:find(typed, 1, true) then
+					histpos = i
+					histUpdate = true
+					vim.api.nvim_set_current_line(str)
+					return
+				end
 			end
+			vim.api.nvim_set_current_line(typed)
+		end,
+	} do
+		for _, key in ipairs(M.config.keymaps[name]) do
+			vim.keymap.set('i', key, action, { buffer = buf })
 		end
-		vim.api.nvim_set_current_line(typed)
-	end, { buffer = buf })
+	end
 	vim.api.nvim_create_autocmd('TextChangedI', {
 		buffer = buf,
 		callback = function()
@@ -86,7 +90,7 @@ function M.override(opts, on_confirm)
 	})
 end
 
----@param config reform.Overridable|reform.winConfig
+---@param config reform.Overridable|reform.input.Config
 return function(config)
 	if config then
 		if type(config) == 'function' then

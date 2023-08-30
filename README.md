@@ -51,7 +51,7 @@ local winConfig = {
 	border = 'rounded',
 }
 require'reform'.setup {
-  docmd = true|{          -- reform the lsp documentation output
+  docmd = true|{        -- reform the lsp documentation output
     override = {
       convert = true|fun(), -- reform markdown/docs parser - v.l.u.convert_input_to_markdown_lines
       stylize = true|fun(), -- override with enabled treesitter - vim.lsp.util.stylize_markdown
@@ -63,9 +63,19 @@ require'reform'.setup {
       lang = true|fun(docs: string, vim.bo.ft): string[]
     },
   },
-  input = true|fun()|winConfig,  -- vim.ui.input (used in vim.lsp.buf.rename)
-  select = true|fun()|winConfig, -- vim.ui.select (used in vim.lsp.buf.code_action)
-  open_link = true|{      -- keymappings to open uri links (clicked or under cursor)
+  input = true|fun()|{  -- vim.ui.input (used in vim.lsp.buf.rename)
+		window = { height = 1, row = -3}+winConfig,
+		keymaps = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
+			cancel = { '<Esc>', '<C-q>' },
+			confirm = { '<CR>' },
+			histPrev = { '<Up>', '<M-k>' },
+			histNext = { '<Down>', '<M-j>' },
+		},
+  },
+  select = true|fun()|{ -- vim.ui.select (used in vim.lsp.buf.code_action)
+    col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'
+  }+winConfig,
+  open_link = true|{    -- keymappings to open uri links (clicked or under cursor)
     {{'', 'i'}, '<C-LeftMouse>'},
     {'n', 'gl'},
   },
