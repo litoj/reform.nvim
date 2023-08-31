@@ -63,7 +63,7 @@ function M.override(items, opts, on_choice)
 end
 
 ---@param config reform.Overridable|reform.WinConfig
-return function(config)
+function M.setup(config)
 	if config then
 		if type(config) == 'function' then
 			vim.ui.select = config
@@ -74,5 +74,6 @@ return function(config)
 	else
 		vim.ui.select = M.default
 	end
-	return M
 end
+
+return M

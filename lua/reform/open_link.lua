@@ -52,12 +52,13 @@ function M.handlers.mouse()
 end
 
 ---@param config boolean|reform.Keymappings set your custom shortcuts or disable the feature
-return function(config)
-	if config then config = M.default end
+function M.setup(config)
+	if config == true then config = M.default end
 	if config then
 		for _, bind in ipairs(config) do
 			vim.keymap.set(bind[1], bind[2], M.handlers[bind[2]:match 'Mouse' and 'mouse' or 'key'])
 		end
 	end
-	return M
 end
+
+return M

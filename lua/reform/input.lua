@@ -91,7 +91,7 @@ function M.override(opts, on_confirm)
 end
 
 ---@param config reform.Overridable|reform.input.Config
-return function(config)
+function M.setup(config)
 	if config then
 		if type(config) == 'function' then
 			vim.ui.input = config
@@ -102,5 +102,6 @@ return function(config)
 	else
 		vim.ui.input = M.default
 	end
-	return M
 end
+
+return M

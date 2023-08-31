@@ -107,7 +107,7 @@ function M.set.cmp_sig(fn)
 end
 
 ---@param config boolean|reform.docmd.Config reform documentation to your liking
-return function(config)
+function M.setup(config)
 	if type(config) == 'boolean' then
 		config = config and {}
 			or { override = { convert = false, stylize = false, cmp_doc = false, cmp_sig = false } }
@@ -120,5 +120,6 @@ return function(config)
 			M.set[k](M.default[k])
 		end
 	end
-	return M
 end
+
+return M
