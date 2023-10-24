@@ -24,7 +24,7 @@ return {
   'JosefLitos/reform.nvim',
   event = 'VeryLazy',
   build = 'make',
-  config = true -- automatically call reform.setup(), use [opts] to customize passed table
+  config = true -- automatically call reform.setup(), use [opts] to customize
 }
 ```
 
@@ -45,7 +45,7 @@ Defaults:
 ```lua
 -- table of config options for `input` and `select`:
 local winConfig = {
-  title_pos = 'center', -- ↓ title of the prompt replaces `''`
+  title_pos = 'center', --        ↓ title of the prompt replaces `''`
 	title = {{'[', 'FloatBorder'}, {'', 'FloatTitle'}, {']', 'FloatBorder'}},
 	relative = 'cursor',
 	border = 'rounded',
@@ -62,6 +62,7 @@ require'reform'.setup {
       -- lang = name of supported language; boolean/formatter
       lang = true|fun(docs: string, vim.bo.ft): string[]
     },
+    debug = false|"", -- filename for saving received docs before parsing
   },
   input = true|fun()|{  -- vim.ui.input (used in vim.lsp.buf.rename)
 		window = { height = 1, row = -3}+winConfig,
@@ -82,8 +83,8 @@ require'reform'.setup {
 }
 ```
 
-- **NOTE:** clicking on `file://` links relies on
-  [urlencode](https://github.com/AquilaIrreale/urlencode)
+- clicking on `file://` links relies on [urlencode](https://github.com/AquilaIrreale/urlencode)
+  (though a fallback is in place)
 - setup function can be called at any time again to change settings at runtime
 
 ## Supported langauges

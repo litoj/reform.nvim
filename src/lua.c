@@ -494,6 +494,16 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 				*fmt++ = *doc++;
 				*fmt++ = *doc;
 				break;
+			case '>':
+				if (alike(doc - 1, " >vim\n") <= 0) *fmt++ = '>';
+				else {
+					while (*--fmt <= ' ') {}
+					fmt = append(fmt + 1, "\n```vim");
+					doc += 4;
+					while (*doc && (*doc != '<' || doc[-1] != ' ' || doc[-2] != '\n')) *fmt++ = *doc++;
+					fmt = append(fmt - 2, "```\n ");
+				}
+				break;
 			case '`': // code with '```'
 				if (doc[1] != '`' || doc[2] != '`') {
 					*fmt++ = '`';
@@ -548,7 +558,7 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 				break;
 			case '{': {
 				const char *docTmp = doc;
-				while (*docTmp > ' ' && *docTmp <= 'z') *fmt++ = *docTmp++;
+				while (*docTmp > ' ' && *docTmp <= '{') *fmt++ = *docTmp++;
 				if (*docTmp != '}' || docTmp - doc == 1) *fmt++ = *docTmp;
 				else { // vim references to params as '{param}'
 					fmt[doc - docTmp] = '`';

@@ -70,15 +70,14 @@ static int l_fmt(lua_State *L) {
 	for (int i = 0; i < langs; i++) {
 		int match = alike(ft, avail[i].ft);
 		if (match > 0 && !ft[match]) {
-			if (alike(doc, "```") > 0 && //
-			alike(doc + len - 4, "\n```") > 0 && 
-			alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
+			if (alike(doc, "```") > 0 && alike(doc + len - 4, "\n```") > 0 && //
+				alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
 				break; // don't parse file preview
 			char *fmt = (char *) malloc(len + 50);
 			char *end = avail[i].parser(doc, fmt, len);
 
 			if (end > fmt)
-				while (*--end == '\n') {}
+				while (*--end <= ' ') {}
 			*++end = '\n';
 			*++end = '\0';
 #ifdef DEBUG

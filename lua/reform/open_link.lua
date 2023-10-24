@@ -13,8 +13,13 @@ function M.handlers.open_link(line, col)
 		{
 			'%[.-%]%(file://([^)]-)%)',
 			function(file) -- relying on [urlencode](https://github.com/AquilaIrreale/urlencode)
-				file = vim.fn.system('urlencode -d', file)
-				vim.cmd.e(file)
+				local ok, ret = pcall(vim.system, { 'urlencode', '-d', file })
+				if ok then
+					vim.cmd.e(ret:wait().stdout)
+				else
+					ret = file:gsub('%%20', ' ')
+					vim.cmd.e(ret)
+				end
 			end,
 		},
 		{ '%[.-%]%(([^)]-)%)', vim.cmd.e },

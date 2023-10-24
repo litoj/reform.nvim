@@ -33,7 +33,11 @@ function M.override.convert(doc, _)
 	end
 
 	if M.config.ft == true or M.config.ft[vim.bo.filetype] == true then
-		-- vim.api.nvim_echo({{vim.inspect(str)}}, false, {})
+		if M.config.debug then
+			local f = io.open(M.config.debug, 'a')
+			f:write(vim.inspect(str) .. '\n')
+			f:close()
+		end
 		return require 'reform.docfmt'(str, vim.bo.filetype)
 	elseif type(M.config.ft) == 'table' and type(M.config.ft[vim.bo.filetype]) == 'function' then
 		M.config.ft[vim.bo.filetype](str, vim.bo.filetype)
@@ -49,8 +53,8 @@ function M.override.convert(doc, _)
 end
 
 function M.override.stylize(buf, contents, _)
-	vim.api.nvim_buf_set_option(buf, 'filetype', 'markdown')
-	vim.api.nvim_buf_set_lines(buf, 0, 0, false, contents)
+	vim.bo[buf].ft = 'markdown'
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, contents)
 	return contents
 end
 
@@ -63,10 +67,8 @@ end
 function M.override.cmp_sig(self, sig, idx)
 	local docs = {}
 	if sig.label then docs[1] = '```\n' .. self:_signature_label(sig, idx) .. '```' end
-	local param = sig.parameters[idx]
-	if param then
-		if param.documentation then docs[#docs + 1] = param.documentation.value end
-	end
+	local p = sig.parameters[idx]
+	if p and p.documentation then docs[#docs + 1] = p.documentation.value end
 	if sig.documentation then docs[#docs + 1] = sig.documentation.value end
 
 	return { kind = 'markdown', value = table.concat(docs, '\n\n') }

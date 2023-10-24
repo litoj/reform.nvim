@@ -7,6 +7,7 @@
 ---@class reform.docmd.Config
 ---@field override? {convert: reform.Overridable, stylize: reform.Overridable, cmp_doc: reform.Overridable, cmp_sig: reform.Overridable}
 ---@field ft? table<string,boolean|fun(string,vim.bo.ft):string[]>|true docs for which `ft` should be reformed (if supported)
+---@field debug? string|false
 
 ---@class reform.docmd.Defaults: reform.docmd.Config
 ---@field config reform.docmd.Config
