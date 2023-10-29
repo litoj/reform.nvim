@@ -35,7 +35,9 @@ function M.override.convert(doc, _)
 	if M.config.ft == true or M.config.ft[vim.bo.filetype] == true then
 		if M.config.debug then
 			local f = io.open(M.config.debug, 'a')
-			f:write(vim.inspect(str) .. '\n')
+			f:write('# >>>\n')
+			f:write(str)
+			f:write('\n')
 			f:close()
 		end
 		return require 'reform.docfmt'(str, vim.bo.filetype)

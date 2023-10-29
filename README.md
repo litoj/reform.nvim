@@ -15,26 +15,14 @@ enabling clickable links (fully customizable).
 - [x] supports `cmp-nvim-lsp-signature-help` - has to replace internal method to inject formatting
 - [ ] support `Rust`, `go`
 
-## Installation
-
-### [`lazy.nvim`](https://github.com/folke/lazy.nvim)
+## Installation with [`lazy.nvim`](https://github.com/folke/lazy.nvim)
 
 ```lua
 return {
   'JosefLitos/reform.nvim',
-  event = 'VeryLazy',
+  event = 'LspAttach',
   build = 'make',
   config = true -- automatically call reform.setup(), use [opts] to customize
-}
-```
-
-### [`packer.nvim`](https://github.com/wbthomason/packer.nvim)
-
-```lua
-use {
-  'JosefLitos/reform.nvim',
-  config = [[require'reform'.setup()]],
-  run = 'make',
 }
 ```
 
@@ -62,7 +50,7 @@ require'reform'.setup {
       -- lang = name of supported language; boolean/formatter
       lang = true|fun(docs: string, vim.bo.ft): string[]
     },
-    debug = false|"", -- filename for saving received docs before parsing
+    debug = false|"", -- filename for saving received docs before parsing (for crash debugging)
   },
   input = true|fun()|{  -- vim.ui.input (used in vim.lsp.buf.rename)
 		window = { height = 1, row = -3}+winConfig,

@@ -38,15 +38,14 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	size_t len = 0;
-	if (argc < 3) {
+	char raw   = alike(argv[argc - 1], "-r") > 0;
+	if (argc < 3 || raw) {
 		size_t alloc = 32768;
 		doc          = (char *) malloc(sizeof(char) * alloc);
 		size_t size  = 0;
 		while ((size = fread(doc + len, 1, alloc - len, stdin)) > 0) {
-			if (len == alloc) doc = (char *) realloc(doc, sizeof(char) * (alloc *= 2));
-			len += size;
+			if ((len+=size) >= alloc - 1) doc = (char *) realloc(doc, sizeof(char) * (alloc *= 2));
 		}
-		if (len == alloc) doc = (char *) realloc(doc, sizeof(char) * (alloc += 1));
 		doc[len] = '\0';
 	} else {
 		doc = argv[2];
@@ -83,13 +82,20 @@ static int l_fmt(lua_State *L) {
 #ifdef DEBUG
 			// printf("\033[34morigin\033[91m: \033[32mlen\033[31m=\033[95m%ld\033[0m\n%s\n", len, doc);
 			len = end - fmt + 1;
-			printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
+			if (!raw) printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 #endif
 			char *ptr = fmt = (char *) realloc(fmt, end - fmt + 1);
 			char *start     = fmt;
 #ifndef DEBUG
 			lua_newtable(L);
 #endif
+			if (*fmt == '\n') fmt++;
+			while (*(ptr = fmt) <= ' ') { // remove empty lines
+				while (*++fmt == ' ') {}
+				if (*fmt != '\n') break;
+			}
+			fmt = ptr;
+
 			for (int j = 1; *fmt; j++, ptr = fmt) {
 				while (*fmt != '\n') fmt++;
 				*fmt++ = '\0';
@@ -102,7 +108,7 @@ static int l_fmt(lua_State *L) {
 			}
 			free(start);
 #ifdef DEBUG
-			if (argc < 3) free(doc);
+			if (argc < 3 || raw) free(doc);
 			return 0;
 #else
 			return 1;
@@ -112,7 +118,7 @@ static int l_fmt(lua_State *L) {
 #ifdef DEBUG
 	if (argc < 3) free(doc);
 	printf("\033[91mUnsupported filetype: %s\033[0m\n%s\n", ft, doc);
-	return 0;
+	return 1;
 #else
 	char *fmt       = (char *) malloc(len + 1);
 	const char *end = doc + len, *ptr = fmt;
