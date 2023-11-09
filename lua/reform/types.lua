@@ -21,3 +21,4 @@
 ---@field input? reform.Overridable|reform.WinConfig reform of vim.ui.input
 ---@field select? reform.Overridable|reform.input.Config reform of vim.ui.select
 ---@field open_link? boolean|reform.Keymappings reform of openable links - set your custom shortcuts
+---@field man? boolean enable custom manpage formatting (using docfmt(bash))

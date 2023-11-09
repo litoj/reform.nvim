@@ -9,10 +9,14 @@ enabling clickable links (fully customizable).
 ### Features
 
 - [x] identical look across different languages (including vim docs in `lua`)
-- [x] as fast as possible - formatted on a single pass, written in `C`
+- [x] speed is key - formatted on a single pass, written in `C`
 - [x] fully customizable - all functions can be replaced by your own
-- [x] links should be clickable like in any other IDE (see `open_link` bellow)
-- [x] supports `cmp-nvim-lsp-signature-help` - has to replace internal method to inject formatting
+- [x] `vim`.`ui`.`input`/`select` popups float at the cursor (instead of cmdline)
+- [x] clickable links in any other IDE (see `open_link`)
+- [x] `cmp-nvim-lsp-signature-help` support - has to replace internal method to inject formatting
+- [x] manpager with automatic formatting using docfmt(bash) (see `man`)
+  - [ ] `man(5)` references should be clickable + highlighted as links (add `:Man` support in link)
+  - [ ] improve parsing speed by using a modified bash parser
 - [ ] support `Rust`, `go`
 
 ## Installation with [`lazy.nvim`](https://github.com/folke/lazy.nvim)
@@ -68,6 +72,7 @@ require'reform'.setup {
     {{'', 'i'}, '<C-LeftMouse>'},
     {'n', 'gl'},
   },
+  man = true            -- custom manpage formatting (using docfmt(bash))
 }
 ```
 

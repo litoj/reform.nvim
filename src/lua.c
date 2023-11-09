@@ -332,7 +332,7 @@ static void code_fmt(const char **docPtr, char **fmtPtr, const char *stop) {
 					doc++;
 					type_fmt(&doc, &fmt);
 					doc--;
-				} else *fmt++ = *doc;
+				} else *fmt++ = *doc; // TODO: can be a member method call (string:gsub())
 				break;
 			case '.':
 				*fmt++ = '.';

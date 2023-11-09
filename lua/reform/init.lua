@@ -1,4 +1,4 @@
-local M = { config = { input = true, select = true, docmd = true, open_link = true } }
+local M = { config = { input = true, select = true, docmd = true, open_link = true, man = true } }
 
 ---@param config? reform.Config
 function M.setup(config)

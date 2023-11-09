@@ -41,4 +41,4 @@ test: $(wildcard ./test/*in.md)
 	@rmdir /tmp/reform.test/ &> /dev/null
 
 clean:
-	@-rm -f *.o main.out $(TARGET)
+	@-rm -f *.o main.out
