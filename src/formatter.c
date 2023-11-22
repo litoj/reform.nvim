@@ -17,7 +17,7 @@
 // clang-format on
 static struct pair {
 	const char *ft;
-	char *(*parser)(const char *, char *, int);
+	char *(*formatter)(const char *, char *, int);
 	const char *codesign;
 } avail[] = {
   p(lua, "lua\n"),
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 		doc          = (char *) malloc(sizeof(char) * alloc);
 		size_t size  = 0;
 		while ((size = fread(doc + len, 1, alloc - len, stdin)) > 0) {
-			if ((len+=size) >= alloc - 1) doc = (char *) realloc(doc, sizeof(char) * (alloc *= 2));
+			if ((len += size) >= alloc - 1) doc = (char *) realloc(doc, sizeof(char) * (alloc *= 2));
 		}
 		doc[len] = '\0';
 	} else {
@@ -73,7 +73,7 @@ static int l_fmt(lua_State *L) {
 				alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
 				break; // don't parse file preview
 			char *fmt = (char *) malloc(len + 50);
-			char *end = avail[i].parser(doc, fmt, len);
+			char *end = avail[i].formatter(doc, fmt, len);
 
 			if (end > fmt)
 				while (*--end <= ' ') {}
@@ -132,7 +132,7 @@ static int l_fmt(lua_State *L) {
 	return 1;
 }
 
-int luaopen_reform_docfmt(lua_State *L) {
+int luaopen_reform_formatter(lua_State *L) {
 	lua_pushcfunction(L, l_fmt);
 	return 1;
 #endif

@@ -1,4 +1,4 @@
-.PHONY: all clean docfmt debug test testDir
+.PHONY: all clean formatter debug test testDir
 
 MAKEFLAGS+=j8
 CC:=gcc
@@ -9,20 +9,20 @@ SHELL:=/bin/bash
 HEAD:=$(wildcard *.h)
 SRC:=$(HEAD:.h=.c)
 OBJ:=$(SRC:.c=.o)
-TARGET:=../lua/reform/docfmt.so
+TARGET:=../lua/reform/formatter.so
 
-docfmt: $(TARGET)
+formatter: $(TARGET)
 
-$(TARGET): $(OBJ) docfmt.o
-	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) docfmt.o $(OBJ)
+$(TARGET): $(OBJ) formatter.o
+	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) formatter.o $(OBJ)
 
 all:
 	$(MAKE) clean
-	$(MAKE) docfmt
+	$(MAKE) formatter
 
 main.out: CFLAGS=-pedantic -Wall -g -fsanitize=address,leak -DDEBUG
 main.out: $(OBJ)
-	$(CC) $(CFLAGS) -o main.out docfmt.c $(OBJ)
+	$(CC) $(CFLAGS) -o main.out formatter.c $(OBJ)
 
 debug: main.out
 
@@ -36,7 +36,7 @@ test/%in.md: debug testDir
 		--color=never > /tmp/reform.$(shell echo $@ | sed 's/in\.md/diff/') \
 		&& rm /tmp/reform.$(shell echo $@ | sed 's/in\.md//')* \
 		|| echo diff in \'$(shell echo $@ | sed 's/\.in\.md//;s,test/,,')\'
-	
+
 test: $(wildcard ./test/*in.md)
 	@rmdir /tmp/reform.test/ &> /dev/null
 

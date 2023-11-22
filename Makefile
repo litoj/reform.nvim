@@ -1,6 +1,6 @@
 DIR = ./src/
 
-docfmt:
+formatter:
 	cd $(DIR) && make all
 
 %:

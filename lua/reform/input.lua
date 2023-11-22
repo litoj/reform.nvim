@@ -1,6 +1,7 @@
+---@type reform.input
+---@diagnostic disable-next-line: missing-fields
 local M = {
 	default = vim.ui.input,
-	---@type reform.input.Config
 	config = {
 		window = vim.tbl_extend('force', {
 			height = 1,
@@ -90,7 +91,6 @@ function M.override(opts, on_confirm)
 	})
 end
 
----@param config reform.Overridable|reform.input.Config
 function M.setup(config)
 	if config then
 		if type(config) == 'function' then

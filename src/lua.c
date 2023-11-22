@@ -84,8 +84,8 @@ static void type_fmt(const char **docPtr, char **fmtPtr) {
 					add_string(&doc, &fmt);
 					while (*++doc && *doc <= ' ') {}
 				} else {
-					*fmt++ = '"';
-					*fmt++ = '"';
+					*fmt++ = '\'';
+					*fmt++ = '\'';
 				}
 				break;
 			case 2: // any

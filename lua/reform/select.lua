@@ -1,6 +1,7 @@
+---@type reform.select
+---@diagnostic disable-next-line: missing-fields
 local M = {
 	default = vim.ui.select,
-	---@type reform.WinConfig
 	config = vim.tbl_extend(
 		'force',
 		{ col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter' },
@@ -40,7 +41,7 @@ function M.override(items, opts, on_choice)
 
 	vim.cmd [[
 		syn match Number /-\?\d\+/
-		syn match Id /\d\+/ contained 
+		syn match Id /\d\+/ contained
 		syn match Delimiter /^\[\d\+\] / contains=Id
 		syn region String start=/"/ skip=/'/ end=/"/ contained
 		syn region String start=/'/ skip=/"/ end=/'/ contained
