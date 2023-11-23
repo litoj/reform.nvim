@@ -284,13 +284,13 @@ static void code_fmt(const char **docPtr, char **fmtPtr, const char *stop) {
 					if (*fmtTmp == ' ' && alike(fmtTmp - 9, "\nfunction")) {
 						if (fmt[-1] == ' ') *fmt++ = '_'; // give a name to unnamed function
 						params = 1;
-					}
+					} else params = 2;
 				}
 				*fmt++ = '(';
 				break;
 			case ')':
 				*fmt++ = ')';
-				if (params) {
+				if (params == 1) {
 					params = 0;
 					if (alike(doc + 1, " end") <= 0) fmt = append(fmt, " end");
 				}

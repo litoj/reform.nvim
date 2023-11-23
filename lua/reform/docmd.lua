@@ -23,7 +23,10 @@ local M = {
 }
 M.config = M.defaults.config
 
-function M.defaults.overrides.convert(doc, _)
+function M.defaults.overrides.convert(doc, contents)
+	if contents and #contents > 0 and M.config.debug then
+		vim.notify('reform.nvim(convert): ' .. vim.inspect(contents))
+	end
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == 'string' or doc.kind == 'plaintext' then
 		return vim.split(doc.value or doc, '\n')
@@ -47,29 +50,30 @@ function M.defaults.overrides.convert(doc, _)
 		str = table.concat(str, '\n')
 	end
 
-	if M.config.ft == true or M.config.ft[vim.bo.filetype] == true then
+	local ft = vim.bo.filetype
+	if M.config.ft == true or M.config.ft[ft] == true then
 		if M.config.debug then
 			local f = io.open(M.config.debug, 'a+')
-			if not f:read '*l' then
+			if not f:read '*l' then -- write only when no crash log exists
 				f:write(str)
 				f:close()
-				f = require 'reform.formatter'(str, vim.bo.filetype)
+				f = require 'reform.formatter'(str, ft)
 				io.open(M.config.debug, 'w'):close()
 				return f
 			else
 				f:close()
 			end
 		end
-		return require 'reform.formatter'(str, vim.bo.filetype)
-	elseif type(M.config.ft) == 'table' and type(M.config.ft[vim.bo.filetype]) == 'function' then
-		M.config.ft[vim.bo.filetype](str, vim.bo.filetype)
+		return require 'reform.formatter'(str, ft)
+	elseif type(M.config.ft) == 'table' and type(M.config.ft[ft]) == 'function' then
+		M.config.ft[ft](str, ft)
 	end
 
 	-- regex fallback that does some basic transformation
 	return vim.split(
 		str
 			:gsub('%s+(```\n)', '%1')
-			:gsub('([ \n\t])`([^`\n]+%s[^`\n]+)`%s*', ('%1\n```%s\n%2```\n'):format(vim.bo.filetype)),
+			:gsub('([ \n\t])`([^`\n]+%s[^`\n]+)`%s*', ('%1\n```%s\n%2```\n'):format(ft)),
 		'\n'
 	)
 end

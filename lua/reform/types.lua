@@ -48,8 +48,8 @@
 ---@field mappings? nvim.Keymap[] mappings for opening links or use reform.open_link.key(), reform.open_link.mouse(), or reform.open_link(line, col) directly
 ---@field handlers? {[1]:string,[2]:fun(path:string)}[] regex & matched link handler pairs, use defaults.handlers[] to pick and order the default handlers
 
----@overload fun(line:string, col:number) use setup handlers to open link at line:col
 ---@class reform.open_link
+---@overload fun(line:string, col:number) use setup handlers to open link at line:col
 ---@field defaults reform.open_link.Config
 ---@field config reform.open_link.Config
 ---@field key fun() open link under caret
