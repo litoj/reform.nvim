@@ -478,7 +478,7 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 		fmt = append(fmt + 1, "```\n\n");
 		if (doc >= docEnd) return fmt - 1;
 	} else doc--;
-	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent
+	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
 	char kind    = 0;
 	while (++doc < docEnd) {
 		switch (*doc) {
@@ -581,17 +581,21 @@ char *lua_fmt(const char *doc, char *fmt, int len) {
 					char kind = fmt[j];
 					if (kind == 'R') *fmt++ = 's'; // 'Return*s*:'
 					fmt = append(fmt, ":**");
-					if (kind == 'P') doc += 2;
+					if (kind == 'P') doc += 2; // ': ', '~' is removed with loop iteration
 					else {
-						doc += 3;
+						doc += 4; // ': ~\n'
 						*fmt++ = '\n';
 						if (kind == 'R') {
-							fmt = append(fmt, " - ");
-							while (*doc == ' ') doc++;
+							fmt       = append(fmt, " - ");
+							indent[0] = 2; // for list alignment (3 spaces) - make first indent already used
+							while (*doc == ' ') {
+								indent[1]++;
+								doc++;
+							}
 						} else *fmt++ = ' ';
 						doc--;
 					}
-				} else { // highlight other section candidates - capital first letter
+				} else { // highlight other section candidates - capitalize first letter
 					char *fmtTmp = fmt - 1;
 					while (fmtTmp > fmt0 && ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
 					if (*fmtTmp >= 'A' &&

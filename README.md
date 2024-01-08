@@ -17,7 +17,7 @@ enabling clickable links (all fully customizable).
 - [x] manpager with automatic formatting using docfmt(bash) (see `man`)
   - [ ] `man(5)` references should be clickable + highlighted as links (add `:Man` support in link)
   - [ ] improve speed by using a modified bash parser
-- [ ] support `Rust`, `go`
+- [ ] support more languages - `Rust`, `go`…
 
 ## Installation with [`lazy.nvim`](https://github.com/folke/lazy.nvim)
 
@@ -69,9 +69,16 @@ require'reform'.setup {
   select = true|fun()|{ -- vim.ui.select (used in vim.lsp.buf.code_action)
     col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'
   }+winConfig,
-  open_link = true|{ -- keymappings to open uri links (clicked or under cursor)
-    {{'', 'i'}, '<C-LeftMouse>'},
-    {'n', 'gl'},
+  open_link = true|{ -- under-cursor-regex matcher with configurable actions
+		unknown = 'definition' -- action on no match - invalid string means no action
+		                       -- other: 'copy-'/'print-' + 'default'/'current'
+		                       -- they make links to upstream git with current line selected
+		                       -- second portion selects between default an current branch
+		mappings = { -- keymappings to open uri links (clicked or under cursor)
+			{{'', 'i'}, '<C-LeftMouse>'},
+			{'n', 'gL'},
+		},
+		handlers = { {'regex(group)', fun(matched:string, reform.open_link.Event)} },
   },
   man = false -- custom manpage formatting (using docfmt(bash))
 }

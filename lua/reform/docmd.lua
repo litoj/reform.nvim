@@ -2,7 +2,7 @@
 ---@diagnostic disable-next-line: missing-fields
 local M = {
 	defaults = {
-		defaults = {
+		vim = {
 			convert = vim.lsp.util.convert_input_to_markdown_lines,
 			stylize = vim.lsp.util.stylize_markdown,
 			convert_sig = vim.lsp.util.convert_signature_help_to_markdown_lines,
@@ -25,7 +25,7 @@ M.config = M.defaults.config
 
 function M.defaults.overrides.convert(doc, contents)
 	if contents and #contents > 0 and M.config.debug then
-		vim.notify('reform.nvim(convert): ' .. vim.inspect(contents))
+		vim.notify('reform.docmd.convert(): ' .. vim.inspect(contents))
 	end
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
 	if type(doc) == 'string' or doc.kind == 'plaintext' then
@@ -52,7 +52,7 @@ function M.defaults.overrides.convert(doc, contents)
 
 	local ft = vim.bo.filetype
 	if M.config.ft == true or M.config.ft[ft] == true then
-		if M.config.debug then
+		if type(M.config.debug) == 'string' then
 			local f = io.open(M.config.debug, 'a+')
 			if not f:read '*l' then -- write only when no crash log exists
 				f:write(str)
@@ -63,6 +63,8 @@ function M.defaults.overrides.convert(doc, contents)
 			else
 				f:close()
 			end
+		elseif M.config.debug then
+			vim.notify(str)
 		end
 		return require 'reform.formatter'(str, ft)
 	elseif type(M.config.ft) == 'table' and type(M.config.ft[ft]) == 'function' then
@@ -87,7 +89,7 @@ end
 function M.defaults.overrides.convert_sig(sig, ft, _)
 	local p = sig.activeParameter
 	-- intentionaly not testing activeSignature range for finding bad lsps
-	sig = sig.signatures[(sig.activeSignature or -1) + 1] or sig.signatures[1]
+	sig = sig.signatures[(sig.activeSignature or 0) + 1]
 	p = sig.parameters[(sig.activeParameter or p or -1) + 1] -- -1 for signature before arg section
 
 	if p then -- mark the active parameter position before conversion
@@ -102,7 +104,7 @@ function M.defaults.overrides.convert_sig(sig, ft, _)
 		sig.label = table.concat({ l:sub(1, s), l:sub(s + 1, e), l:sub(e + 1) }, '___')
 	end
 
-	local ret = { ('```%s\n%s```'):format(ft, sig.label) }
+	local ret = { ('```%s\n%s\n```'):format(ft, sig.label) }
 	if p and p.documentation then ret[#ret + 1] = p.documentation.value or p.documentation end
 	if sig.documentation then ret[#ret + 1] = sig.documentation.value or sig.documentation end
 	ret = vim.lsp.util.convert_input_to_markdown_lines {
@@ -191,7 +193,7 @@ function M.setup(config)
 		if v then
 			set[k](type(v) == 'function' and v or M.defaults.overrides[k])
 		else
-			set[k](M.defaults.defaults[k])
+			set[k](M.defaults.vim[k])
 		end
 	end
 end

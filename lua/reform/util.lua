@@ -20,6 +20,7 @@ function M.mkWin(buf, opts, prompt)
 	opts.winhl = winhl
 	vim.wo[win].winhighlight = 'Search:NONE,Pmenu:Normal,MatchParen:NONE,' .. winhl
 	vim.wo[win].number = false
+	vim.wo[win].relativenumber = false
 	vim.wo[win].cursorcolumn = false
 	vim.api.nvim_create_autocmd('BufLeave', {
 		buffer = buf,

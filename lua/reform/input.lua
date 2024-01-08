@@ -45,6 +45,12 @@ function M.override(opts, on_confirm)
 			on_confirm(opts.cancelreturn == nil and '' or opts.cancelreturn)
 		end
 	end
+	vim.api.nvim_create_autocmd('ModeChanged', {
+		buffer = buf,
+		callback = function(state)
+			if state.match == 'i:n' then callback() end
+		end,
+	})
 	for name, action in pairs {
 		cancel = callback,
 		confirm = function() callback(true) end,
