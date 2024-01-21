@@ -38,18 +38,18 @@ Defaults:
 -- table of config options for `input` and `select`:
 local winConfig = {
   title_pos = 'center', --        ↓ title of the prompt replaces `''`
-	title = {{'[', 'FloatBorder'}, {'', 'FloatTitle'}, {']', 'FloatBorder'}},
-	relative = 'cursor',
-	border = 'rounded',
+  title = {{'[', 'FloatBorder'}, {'', 'FloatTitle'}, {']', 'FloatBorder'}},
+  relative = 'cursor',
+  border = 'rounded',
 }
 require'reform'.setup {
   docmd = true|{ -- reform the lsp documentation output
     override = {
-			convert = true|fun(), -- main lspdocs-to-markdown conversion
-			stylize = true|fun(), -- docs-display buffer highlighting
-			convert_sig = true|fun(), -- signature-help docs composition
-			cmp_doc = true|fun(), -- cmp preview docs parsing
-			cmp_sig = true|fun(), -- cmp signature help docs parsing
+      convert = true|fun(), -- main lspdocs-to-markdown conversion
+      stylize = true|fun(), -- docs-display buffer highlighting
+      convert_sig = true|fun(), -- signature-help docs composition
+      cmp_doc = true|fun(), -- cmp preview docs parsing
+      cmp_sig = true|fun(), -- cmp signature help docs parsing
     },
     ft = true|{ -- filetypes allowed for parsing (default=all/ ft=true)
       -- lang = name of supported language; boolean/formatter
@@ -58,27 +58,27 @@ require'reform'.setup {
     debug = false|'', -- filename for saving received docs before parsing (for crash debugging)
   },
   input = true|fun()|{ -- vim.ui.input (used in vim.lsp.buf.rename)
-		window = { height = 1, row = -3}+winConfig,
-		keymaps = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
-			cancel = { '<Esc>', '<C-q>' },
-			confirm = { '<CR>' },
-			histPrev = { '<Up>', '<M-k>' },
-			histNext = { '<Down>', '<M-j>' },
-		},
+    window = { height = 1, row = -3}+winConfig,
+    keymaps = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
+      cancel = { '<Esc>', '<C-q>' },
+      confirm = { '<CR>' },
+      histPrev = { '<Up>', '<M-k>' },
+      histNext = { '<Down>', '<M-j>' },
+    },
   },
   select = true|fun()|{ -- vim.ui.select (used in vim.lsp.buf.code_action)
     col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'
   }+winConfig,
   open_link = true|{ -- under-cursor-regex matcher with configurable actions
-		unknown = 'definition' -- action on no match - invalid string means no action
-		                       -- other: 'copy-'/'print-' + 'default'/'current'
-		                       -- they make links to upstream git with current line selected
-		                       -- second portion selects between default an current branch
-		mappings = { -- keymappings to open uri links (clicked or under cursor)
-			{{'', 'i'}, '<C-LeftMouse>'},
-			{'n', 'gL'},
-		},
-		handlers = { {'regex(group)', fun(matched:string, reform.open_link.Event)} },
+    unknown = 'definition' -- action on no match - invalid string means no action
+                           -- other: 'copy-'/'print-' + 'default'/'current'
+                           -- they make links to upstream git with current line selected
+                           -- second portion selects between default an current branch
+    mappings = { -- keymappings to open uri links (clicked or under cursor)
+      {{'', 'i'}, '<C-LeftMouse>'},
+      {'n', 'gL'},
+    },
+    handlers = { {'regex(group)', fun(matched:string, reform.open_link.Event)} },
   },
   man = false -- custom manpage formatting (using docfmt(bash))
 }
@@ -111,5 +111,6 @@ Language servers bellow were tested.
 - `jdtls`
   ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
 - `luals`, including Vim-style documentation
-![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
+  ![Lua](https://user-images.githubusercontent.com/54900518/212195668-8463fadf-a0c4-4a4e-b70a-3612a332fead.png)
+
 </details>

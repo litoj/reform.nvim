@@ -28,13 +28,22 @@ M.defaults.handlers = { -- TODO: be filetype specific/dynamically choose by exte
 		function(file)
 			local pos = file:match ':.+$' or false
 			if pos then file = file:match '^[^:]+' end
-			vim.cmd.e(
-				file:match '^[~/]' and file
-					or (
-						vim.api.nvim_buf_get_name(0):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '')
-						.. file
-					)
-			)
+			if not file:match '^[~/]' then
+				local fRel = vim.api
+					.nvim_buf_get_name(0)
+					:gsub('term://(.+/)/%d+:.*$', '%1')
+					:gsub('[^/]+$', '') .. file
+				local f = io.open(fRel)
+				if f then
+					f:close()
+					vim.cmd.e(fRel)
+				else
+					vim.cmd.e(file)
+				end
+			else
+				vim.cmd.e(file)
+			end
+
 			if pos then
 				vim.api.nvim_win_set_cursor(0, {
 					tonumber(pos:gsub('^:(%d+).*$', '%1'), 10),
@@ -46,6 +55,7 @@ M.defaults.handlers = { -- TODO: be filetype specific/dynamically choose by exte
 	{
 		'.+',
 		function(word, ev)
+			if type(M.config.unknown) == 'function' then return M.config.unknown(word, ev) end
 			if M.config.unknown == 'definition' or ev.mouse then
 				if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
 				return vim.lsp.buf.definition()
@@ -78,11 +88,8 @@ M.defaults.handlers = { -- TODO: be filetype specific/dynamically choose by exte
 			s[#s + 1] = ev.line - 1
 			s = table.concat(s)
 
-			if M.config.unknown:match 'copy' then
-				vim.fn.setreg('+', s)
-			elseif M.config.unknown:match 'print' then
-				vim.print(s)
-			end
+			if M.config.unknown:match 'copy' then vim.fn.setreg('+', s) end
+			if M.config.unknown:match 'print' then vim.print(s) end
 		end,
 	},
 }
