@@ -25,7 +25,6 @@ enabling clickable links (all fully customizable).
 return {
   'JosefLitos/reform.nvim',
   event = 'LspAttach',
-  build = 'make',
   opts = {} -- put settings here
 }
 ```
