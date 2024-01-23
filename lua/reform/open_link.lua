@@ -28,21 +28,20 @@ M.defaults.handlers = { -- TODO: be filetype specific/dynamically choose by exte
 		function(file)
 			local pos = file:match ':.+$' or false
 			if pos then file = file:match '^[^:]+' end
-			if not file:match '^[~/]' then
-				local fRel = vim.api
-					.nvim_buf_get_name(0)
-					:gsub('term://(.+/)/%d+:.*$', '%1')
-					:gsub('[^/]+$', '') .. file
-				local f = io.open(fRel)
-				if f then
-					f:close()
-					vim.cmd.e(fRel)
-				else
-					vim.cmd.e(file)
+			local open
+			for f in ipairs {
+				vim.api.nvim_buf_get_name(0):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '') .. file,
+				file,
+			} do
+				local ok = io.open(f)
+				if ok then
+					open = f
+					ok:close()
+					break
 				end
-			else
-				vim.cmd.e(file)
 			end
+			if not open then return 1 end
+			vim.cmd.e(open)
 
 			if pos then
 				vim.api.nvim_win_set_cursor(0, {
@@ -50,6 +49,12 @@ M.defaults.handlers = { -- TODO: be filetype specific/dynamically choose by exte
 					tonumber(pos:gsub('^:.+:(%d+)$', '%1'), 10) or 0,
 				})
 			end
+		end,
+	},
+	{
+		'["\']([%w_-]+[%w_.%-]+/[%w_.%-]+)[\'"]',
+		function(url)
+			vim.fn.jobstart(("xdg-open 'https://github.com/%s'"):format(url), { detach = true })
 		end,
 	},
 	{
@@ -101,7 +106,7 @@ function M.open_link(buf, ev)
 	for _, pairs in ipairs(M.config.handlers) do
 		local from, to, url = line:find(pairs[1], 1)
 		while from do
-			if col >= from and col <= to then return pairs[2](url, ev) end -- found
+			if col >= from and col <= to and not pairs[2](url, ev) then return end -- parsing success
 			from, to, url = line:find(pairs[1], to + 1)
 		end
 	end
