@@ -1,5 +1,6 @@
 #ifndef utils
 #define utils 1
+typedef unsigned char in;
 /**
  * @brief Append `str` to `dst`
  *
@@ -16,7 +17,7 @@ char* append(char* dst, const char* str);
  * @param cmp string to compare against
  * @return length of `cmp` if passed, else `0`
  */
-int alike(const char* str, const char* cmp);
+int alike(const in* str, const char* cmp);
 
 /**
  * @brief Parses current doc kind and adds section header when needed.
@@ -25,5 +26,5 @@ int alike(const char* str, const char* cmp);
  * @param fmtPtr ptr to buffer for formatted docs
  * @param kind kind of previous docs line ('@[]..')
  */
-void resolveKind(const char** docPtr, char** fmtPtr, char* kind);
+void resolveKind(const in** docPtr, char** fmtPtr, char* kind);
 #endif

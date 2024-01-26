@@ -11,7 +11,9 @@ SRC:=$(HEAD:.h=.c)
 OBJ:=$(SRC:.c=.o)
 TARGET:=../lua/reform/formatter.so
 
-formatter: $(TARGET)
+formatter:
+	@-[ -f main.out ] && $(MAKE) clean
+	$(MAKE) $(TARGET)
 
 $(TARGET): $(OBJ) formatter.o
 	$(CC) $(CFLAGS) -o $@ $(LDFLAGS) formatter.o $(OBJ)

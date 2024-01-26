@@ -1,7 +1,6 @@
 #include "utils.h"
-
-char *cpp_fmt(const char *doc, char *fmt, int len) {
-	const char *docEnd = doc + len;
+char *cpp_fmt(const in *doc, char *fmt, int len) {
+	const in *docEnd = doc + len;
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
 		docEnd = doc + len - 6;
 		while (*docEnd != '`' || docEnd[-1] != '`' || docEnd[-2] != '`') docEnd--;
@@ -11,8 +10,8 @@ char *cpp_fmt(const char *doc, char *fmt, int len) {
 			return fmt;
 		}
 		docEnd -= 2; // end before ```
-		fmt                 = append(fmt, "```cpp");
-		const char *docCode = docEnd;
+		fmt               = append(fmt, "```cpp");
+		const in *docCode = docEnd;
 		while (*docCode != '\n') docCode++;
 		while (*docCode) *fmt++ = *docCode++;
 		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
@@ -47,9 +46,12 @@ char *cpp_fmt(const char *doc, char *fmt, int len) {
 					*fmt++ = '`';
 				}
 				break;
-			case -110:  // →
-				fmt -= 2; // → is a 3-byte char
-				doc += 3;
+			case 226: // →
+				if (!alike(doc, "→")) {
+					*fmt++ = (char) *doc;
+					break;
+				}
+				doc += 5; // scrap this line
 				while (*doc != '\n' || doc[1] != '\n') doc++;
 				doc++;
 				break;
@@ -63,7 +65,7 @@ char *cpp_fmt(const char *doc, char *fmt, int len) {
 				}
 				break;
 			case '@': {
-				const char *docTmp = doc + 1;
+				const in *docTmp = doc + 1;
 				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++;
 				if (*docTmp != ' ') {
 					*fmt++ = '@';

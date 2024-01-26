@@ -17,7 +17,7 @@
 // clang-format on
 static struct pair {
 	const char *ft;
-	char *(*formatter)(const char *, char *, int);
+	char *(*formatter)(const in *, char *, int);
 	const char *codesign;
 } avail[] = {
   p(lua, "lua\n"),
@@ -32,25 +32,26 @@ static int langs = sizeof(avail) / sizeof(struct pair);
 
 #ifdef DEBUG
 int main(int argc, char *argv[]) {
-	char *doc;
+	in *doc;
 	if (argc < 2) {
 		printf("usage: ./main.out FileType TestString\n   or: ./main.out FileType < test.txt\n");
 		return 1;
 	}
 	size_t len = 0;
-	char raw   = alike(argv[argc - 1], "-r") > 0;
+	char raw   = alike((in *) argv[argc - 1], "-r") > 0;
 	if (argc < 3 || raw) {
 		size_t alloc = 32768;
-		doc          = (char *) malloc(sizeof(char) * alloc);
+		doc          = (in *) malloc(sizeof(in) * alloc);
 		size_t size  = 0;
 		while ((size = fread(doc + len, 1, alloc - len, stdin)) > 0) {
-			if ((len += size) >= alloc - 1) doc = (char *) realloc(doc, sizeof(char) * (alloc *= 2));
+			if ((len += size) >= alloc - 1) doc = (in *) realloc(doc, sizeof(in) * (alloc *= 2));
 		}
 		doc[len] = '\0';
 	} else {
-		doc = argv[2];
+		doc = (in *) argv[2];
 		while (doc[++len]) {}
 	}
+	if (doc[len - 1] == '\n') doc[--len] = 0;
 	const char *ft = argv[1];
 
 #else
@@ -58,8 +59,8 @@ int main(int argc, char *argv[]) {
 static int l_fmt(lua_State *L) {
 	if (lua_gettop(L) != 2) return 0;
 	size_t len;
-	const char *doc = luaL_checklstring(L, 1, &len);
-	const char *ft  = luaL_checkstring(L, 2);
+	const in *doc  = (in *) luaL_checklstring(L, 1, &len);
+	const char *ft = luaL_checkstring(L, 2);
 	while (*doc == '\n' || *doc == ' ') {
 		len--;
 		doc++;
@@ -67,16 +68,16 @@ static int l_fmt(lua_State *L) {
 #endif
 
 	for (int i = 0; i < langs; i++) {
-		int match = alike(ft, avail[i].ft);
+		int match = alike((in *) ft, avail[i].ft);
 		if (match > 0 && !ft[match]) {
 			if (alike(doc, "```") > 0 && alike(doc + len - 4, "\n```") > 0 && //
 				alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
 				break; // don't parse file preview
-			char *fmt = (char *) malloc(len + 50);
+			char *fmt = (char *) malloc((len + 50) * sizeof(char));
 			char *end = avail[i].formatter(doc, fmt, len);
 
 			if (end > fmt)
-				while (*--end <= ' ') {}
+				while ((in) * --end <= (in) ' ') {}
 			*++end = '\n';
 			*++end = '\0';
 #ifdef DEBUG
@@ -84,7 +85,7 @@ static int l_fmt(lua_State *L) {
 			len = end - fmt + 1;
 			if (!raw) printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 #endif
-			char *ptr = fmt = (char *) realloc(fmt, end - fmt + 1);
+			char *ptr = fmt = (char *) realloc(fmt, (end - fmt + 1) * sizeof(char));
 			char *start     = fmt;
 #ifndef DEBUG
 			lua_newtable(L);
@@ -121,9 +122,9 @@ static int l_fmt(lua_State *L) {
 	return 1;
 #else
 	char *fmt       = (char *) malloc(len + 1);
-	const char *end = doc + len, *ptr = fmt;
+	const char *end = (char *) doc + len, *ptr = fmt;
 	lua_newtable(L);
-	for (int j = 1; doc < end; j++, ptr = fmt, doc++) {
+	for (int j = 1; (char *) doc < end; j++, ptr = fmt, doc++) {
 		while (*doc != '\n' && *doc) *fmt++ = *doc++;
 		*fmt++ = '\0';
 		lua_pushstring(L, ptr);

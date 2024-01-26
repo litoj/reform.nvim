@@ -1,10 +1,10 @@
 #include "utils.h"
 
-char *bash_fmt(const unsigned char *doc, char *fmt, int len) {
+char *bash_fmt(const in *doc, char *fmt, int len) {
 	while (doc[len] != '`') len--;
 	doc += 6;
 	len -= 10;
-	const unsigned char *docEnd = doc + len;
+	const in *docEnd = doc + len;
 
 	int indent[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, lvl = 0;
 	char separated = 0;
@@ -99,7 +99,7 @@ char *bash_fmt(const unsigned char *doc, char *fmt, int len) {
 				}
 
 				int j                    = 0;
-				const unsigned char *tmp = doc;
+				const in *tmp = doc;
 				int kind                 = 0;
 				// secondary text kind determination
 				if (('A' <= *tmp && *tmp <= 'Z') || ('a' <= *tmp && *tmp <= 'z')) {

@@ -6,4 +6,4 @@
  * @param len end of `doc`
  * @return ptr to current `fmt` position
  */
-char *lua_fmt(const char *doc, char *fmt, int len);
+char *lua_fmt(const unsigned char *doc, char *fmt, int len);

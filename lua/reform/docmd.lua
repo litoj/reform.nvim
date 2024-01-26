@@ -54,15 +54,20 @@ function M.defaults.overrides.convert(doc, contents)
 	if M.config.ft == true or M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
 			local f = io.open(M.config.debug, 'a+')
-			if not f:read '*l' then -- write only when no crash log exists
-				f:write(str)
-				f:close()
-				f = require 'reform.formatter'(str, ft)
+			local has = f:read '*l'
+			f:write(str)
+			f:close()
+			local ret = require 'reform.formatter'(str, ft)
+			if not has then
 				io.open(M.config.debug, 'w'):close()
-				return f
 			else
+				f = io.open(M.config.debug, 'a')
+				f:write '\nFMT>>>\n'
+				f:write(table.concat(ret, '\n'))
+				f:write '<<<FMT\n'
 				f:close()
 			end
+			return ret
 		elseif M.config.debug then
 			vim.notify(str)
 		end

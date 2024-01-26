@@ -5,15 +5,15 @@ char *append(char *dst, const char *str) {
 	return dst;
 }
 
-int alike(const char *str, const char *cmp) {
+int alike(const in *str, const char *cmp) {
 	const char *from = cmp;
-	while (*cmp && *cmp == *str++) cmp++;
+	while (*cmp && *cmp == (char) *str++) cmp++;
 	return *cmp ? 0 : cmp - from;
 }
 
-void resolveKind(const char **docPtr, char **fmtPtr, char *kind) {
-	const char *doc = *docPtr;
-	char *fmt       = *fmtPtr;
+void resolveKind(const in **docPtr, char **fmtPtr, char *kind) {
+	const in *doc = *docPtr;
+	char *fmt     = *fmtPtr;
 	// we rely on parsers to catch `@a` and `@p` themselves
 	if (!*kind && !alike(doc, "brief")) *fmt++ = '\n';
 	const char *section;
