@@ -1,7 +1,5 @@
 ---@type reform
-local M =
-	---@diagnostic disable-next-line: missing-fields
-	{ defaults = { input = true, select = true, docmd = true, open_link = true, man = false } }
+local M = { defaults = { input = true, select = true, docmd = true, open_link = true } }
 M.config = M.defaults
 
 function M.setup(config)

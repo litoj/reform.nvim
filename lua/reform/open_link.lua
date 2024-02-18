@@ -5,7 +5,7 @@ local M = {
 		mappings = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gL' } },
 	},
 }
-M.handlers = { -- TODO: be filetype specific/dynamically choose by external function
+M.handlers = { -- TODO: be filetype specific (now filetype checks must be inside handlers)
 	markdown_url = {
 		pattern = '%[.-%]%((https?://[^)]-)%)',
 		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
