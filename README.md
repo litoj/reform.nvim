@@ -12,9 +12,9 @@ enabling clickable links (all fully customizable).
 - [x] speed is key - formatted on a single pass, written in `C`
 - [x] fully customizable - all functions can be replaced by your own
 - [x] `vim`.`ui`.`input`/`select` popups float at the cursor (instead of cmdline)
-- [x] clickable links like any other IDE (see `open_link`)
+- [x] `open_link`: clickable links like any other IDE, with modular link handlers
 - [x] `cmp-nvim-lsp-signature-help` support - has to replace internal method to inject formatting
-- [x] manpager with automatic formatting using docfmt(bash) (see `man`)
+- [x] manpager with automatic formatting using formatter(bash) (see `man`)
   - [ ] `man(5)` references should be clickable + highlighted as links (add `:Man` support in link)
   - [ ] improve speed by using a modified bash parser
 - [ ] support more languages - `Rust`, `go`…
@@ -42,7 +42,7 @@ local winConfig = {
   border = 'rounded',
 }
 require'reform'.setup {
-  docmd = true|{ -- reform the lsp documentation output
+  docmd = true|{ -- reform language-server's docs markdown to have a consistent structure
     override = {
       convert = true|fun(), -- main lspdocs-to-markdown conversion
       stylize = true|fun(), -- docs-display buffer highlighting
@@ -69,23 +69,24 @@ require'reform'.setup {
     col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'
   }+winConfig,
   open_link = true|{ -- under-cursor-regex matcher with configurable actions
-    unknown = 'definition' -- action on no match - invalid string means no action
-                           -- other: 'copy-'/'print-' + 'default'/'current'
-                           -- they make links to upstream git with current line selected
-                           -- second portion selects between default an current branch
+    fallback = 'definition' -- action on no match - invalid value / 'noop' means no action
+      -- git link generation: {copy: boolean, print: boolean, branch:'default'|'current'|fun(ev)}
+      -- generates links to referenced line in the 'default'/'current'/provided branch
     mappings = { -- keymappings to open uri links (clicked or under cursor)
-      {{'', 'i'}, '<C-LeftMouse>'},
-      {'n', 'gL'},
+      {{'', 'i'}, '<C-LeftMouse>'}, -- maps to open_link.mouse()
+      {'n', 'gL'},                  -- maps to open_link.key()
     },
-    handlers = { {'regex(group)', fun(matched:string, reform.open_link.Event)} },
+    handlers = { -- return value as an exit value → try other handlers if matched handler failed
+      {pattern = 'reg(match)exp', use = fun(match:string, reform.open_link.Event): 1?}
+    },
   },
-  man = false -- custom manpage formatting (using docfmt(bash))
+  man = false -- custom manpage formatting (using formatter(bash))
 }
 ```
 
 - setup function can be called at any time again to change settings at runtime
 
-## Supported langauges
+## Formatting-supported langauges
 
 Language servers bellow were tested.
 
