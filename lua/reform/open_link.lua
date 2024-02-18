@@ -1,5 +1,4 @@
 ---@diagnostic disable: need-check-nil
--- originally made by [nvim-lsp-extras](https://github.com/seblj/nvim-lsp-extras/blob/1cc94a8e590da48284e103e9a4627f7fbb178618/lua/nvim-lsp-extras/treesitter_hover/markdown.lua#L130)
 local M = {
 	defaults = {
 		unknown = 'definition',
@@ -24,30 +23,54 @@ M.handlers = { -- TODO: be filetype specific/dynamically choose by external func
 	markdown_file_path = { pattern = '%[.-%]%(([^)]-)%)', use = vim.cmd.e },
 	reform_vimdoc_ref = { pattern = '%[([^%] ]-)%][^(%]]', use = vim.cmd.help },
 	vimdoc_ref = { pattern = '|(%S-)|', use = vim.cmd.help },
-	any_file_path = {
+	stacktrace_file_path = {
 		pattern = '(~?[%w._%-]*/[%w/._%-]*:?%d*:?%d*)',
-		use = function(file) -- TODO: try join lines to find complete path (prev and post)
-			local pos = file:match ':.+$' or false
-			if pos then file = file:match '^[^:]+' end
-			local open
-			for _, f in ipairs {
-				vim.api.nvim_buf_get_name(0):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '') .. file,
-				file:gsub('^~', os.getenv 'HOME'),
-			} do
-				local ok = io.open(f)
-				if ok then
-					open = f
-					ok:close()
-					break
+		use = function(path, ev)
+			local bufname =
+				vim.api.nvim_buf_get_name(ev.buf):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '')
+			local function real(path)
+				local pos = path:match ':.+$' or false
+				if pos then path = path:sub(1, #path - #pos) end
+				for _, f in ipairs { bufname .. path, path:gsub('^~', os.getenv 'HOME') } do
+					local ok = io.open(f)
+					if ok then
+						ok:close()
+						return f, pos
+					end
+				end
+				return nil, pos
+			end
+
+			local file, pos = real(path)
+			if not file then
+				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
+				local src = { lines[1]:find '(~?[%w._%-]*/[%w/._%-]*:?%d*:?%d*)' }
+				if not pos and src[2] == #src[3] and lines[2] then -- next line
+					file, pos = real(path .. lines[2]:match '^([%w/._%-]+:?%d*:?%d*)')
+				end
+				if not path:match '^/home' then
+					local i = 1
+					while not file and ev.line > i and src[3] and src[1] == 1 do
+						src = {
+							vim.api
+								.nvim_buf_get_lines(ev.buf, ev.line - i - 1, ev.line - i, true)[1]
+								:find '(~?[%w/._%-]*/[%w/._%-]*)$',
+						}
+						if src[3] then
+							path = src[3] .. path
+							file, pos = real(path)
+							i = i + 1
+						end
+					end
 				end
 			end
-			if not open then return 1 end
-			vim.cmd.e(open)
+			if not file then return 1 end
 
+			vim.cmd.e(file)
 			if pos then
 				vim.api.nvim_win_set_cursor(0, {
 					tonumber(pos:gsub('^:(%d+).*$', '%1'), 10),
-					tonumber(pos:gsub('^:.+:(%d+)$', '%1'), 10) or 0,
+					(tonumber(pos:gsub('^:.+:(%d+)$', '%1'), 10) or 1) - 1,
 				})
 			end
 		end,
@@ -67,7 +90,7 @@ M.defaults.handlers = {
 	'markdown_file_path',
 	'reform_vimdoc_ref',
 	'vimdoc_ref',
-	'any_file_path',
+	'stacktrace_file_path',
 	'nvim_plugin',
 }
 
@@ -80,7 +103,7 @@ function M.open_link(ev)
 		if type(handler) == 'string' then handler = M.handlers[handler] end
 		local from, to, url = line:find(handler.pattern, 1)
 		while from do
-			if col >= from and col <= to and not handler.use(url, ev) then return end -- parsing success
+			if from <= col and col <= to and not handler.use(url, ev) then return end -- parsing success
 			from, to, url = line:find(handler.pattern, to + 1)
 		end
 	end
