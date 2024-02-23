@@ -1,3 +1,15 @@
+---@alias reform.util.WinConfig vim.api.keyset.float_config|{winhl:table<string,string>}
+---@alias reform.util.Event {buf:integer,line:integer,column:integer,freeFrom?:boolean,action:string}
+---@alias reform.util.MatchInfo {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
+---@alias reform.util.CursorMatchHandler {luapat?:string,vimre?:string,use:fun(match:string,info:reform.util.MatchInfo,ev:reform.util.Event):nil|false} returns false for failure
+---@alias reform.util.NamedCursorMatchHandlers table<string,reform.util.CursorMatchHandler>
+---@alias reform.util.CursorMatchRefs table<integer,reform.util.CursorMatchHandler|string> matchers or their references by name
+---@alias reform.util.CursorMatcherConfig reform.util.CursorMatchRefs|fun(event:reform.util.Event):reform.util.CursorMatchRefs regex & matched cursor text handler pairs or reference to predefined handlers
+---@class reform.util
+---@field winConfig reform.util.WinConfig default window configuration
+---@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
+---@field findCursorMatch fun(event:reform.util.Event,config:reform.util.CursorMatcherConfig,knownHandlers:reform.util.NamedCursorMatchHandlers):boolean
+
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
 
 ---@class reform.docmd.Overrides map of available lspdocs-related replacements and their settings
@@ -22,9 +34,8 @@
 ---@field config reform.docmd.Config
 ---@field setup fun(config:boolean|reform.docmd.Config) opt-out of filetypes or set custom overrides
 
----@alias reform.WinConfig vim.api.keyset.float_config|{winhl:table<string,string>}
 ---@class reform.input.Config
----@field window? reform.WinConfig
+---@field window? reform.util.WinConfig
 ---@field keymaps? {histPrev:string[],histNext:string[],confirm:string[],cancel:string[]} keymaps for history navigation (insert mode)
 
 ---@alias vim.ui.input function
@@ -39,40 +50,45 @@
 
 ---@class reform.select
 ---@field default vim.ui.select
----@field config reform.WinConfig
+---@field config reform.util.WinConfig
 ---@field override vim.ui.select override with floating window and quick-select keybinds
----@field setup fun(config:reform.Overridable|reform.WinConfig) customize window position/title/highlighting or use a custom implementation
+---@field setup fun(config:reform.Overridable|reform.util.WinConfig) customize window position/title/highlighting or use a custom implementation
 
 ---@alias nvim.Keymap {[1]:string|string[], [2]: string} mode and key for vim.keymap.set
----@alias reform.open_link.Event {buf:integer,line:integer,column:integer,mouse?:boolean}
----@alias reform.open_link.Handler {pattern:string,use:fun(match:string,ev:reform.open_link.Event):nil|1} 1 for failure
 
----@class reform.open_link.Config
----@field fallback? 'noop'|'definition'|{copy:boolean,print:boolean,branch:'current'|'default'|fun(ev:reform.open_link.Event):string}
+---@class reform.link.Config
+---@field fallback? 'noop'|'definition'|{copy:boolean,print:boolean,branch:'current'|'default'|fun(ev:reform.util.Event):string}
 ---       - 'copy','print' the git link generated for current cursor line
----@field mappings? nvim.Keymap[] mappings for opening links or use reform.open_link.key(), reform.open_link.mouse()
----@field handlers? table<integer,reform.open_link.Handler|string> regex & matched link handler pairs, use `ol.handlers[]` to pick and order the default handlers - just by name
+---@field mappings? nvim.Keymap[] mappings for opening links or use reform.ink.key(), reform.link.mouse()
+---@field handlers? reform.util.CursorMatcherConfig
 
----@class reform.open_link
----@overload fun(line:string, col:number) use setup handlers to open link at line:col
----@field defaults reform.open_link.Config
----@field config reform.open_link.Config
+---@class reform.link
+---@field defaults reform.link.Config
+---@field config reform.link.Config
 ---@field key fun() open link under caret
 ---@field mouse fun() open link under mouse - at click position
----@field handle fun(ev:reform.open_link.Event) use setup handlers to open link at line:col
----@field setup fun(config:reform.open_link.Config) set your custom shortcuts or disable the feature
+---@field handle fun(ev:reform.util.Event) use setup handlers to open link at line:col
+---@field setup fun(config:reform.link.Config) set your custom shortcuts+actions or disable the feature
+
+---@class reform.toggle.Config
+---@field mappings? {[1]:string|string[], [2]:string, [3]:reform.util.Event}[] mappings for actions - mode, keybind, action
+---@field handlers? reform.util.CursorMatcherConfig
+
+---@class reform.toggle
+---@field defaults reform.toggle.Config
+---@field config reform.toggle.Config
+---@field genBind fun(evCfg:reform.util.Event) generate binding with preconfigured event
+---@field handle fun(ev:reform.util.Event) use setup handlers to change value at line:col
+---@field setup fun(config:reform.link.Config) set your custom shortcuts+actions or disable the feature
 
 ---@class reform.Config
 ---@field docmd? boolean|reform.docmd.Config reform of all markdown documentation/signature...
 ---@field input? reform.Overridable|reform.input.Config reform of vim.ui.input
----@field select? reform.Overridable|reform.WinConfig reform of vim.ui.select
----@field open_link? boolean|reform.open_link.Config reform of openable links - set your custom shortcuts and link detection
+---@field select? reform.Overridable|reform.util.WinConfig reform of vim.ui.select
+---@field link? boolean|reform.link.Config reform of openable links - customizable link detection and actions
+---@field toggle? boolean|reform.toggle.Config custom value toggler/changer system - inc/dec/tgl easily
 
 ---@class reform
 ---@field defaults reform.Config
 ---@field config reform.Config
----@field docmd reform.docmd lspdocs formatting to concise markdown structure
----@field input reform.input vim.ui.input with history navigation in a floating window
----@field select reform.select vim.ui.select with a floating window and quick selection keybinds
----@field open_link reform.open_link open links in the buffer or in the browser like in any other IDE
 ---@field setup fun(config:reform.Config) setup reform.nvim just the way you like it
