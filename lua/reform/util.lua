@@ -7,6 +7,7 @@ local M = {
 		relative = 'cursor',
 		border = 'rounded',
 	},
+	debug = false,
 }
 function M.mkWin(buf, opts, prompt)
 	local mode = vim.api.nvim_get_mode().mode
@@ -38,42 +39,75 @@ function M.mkWin(buf, opts, prompt)
 	return win
 end
 
-function M.findCursorMatch(event, config, default)
+function M.findMatch(event, matchers, default, filter)
+	if event.opts.sorting then filter = event.opts.sorting end
 	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
 	local column = event.column
 
-	if type(config) == 'function' then config = config(event) end
-	for _, handler in ipairs(config) do
-		if type(handler) == 'string' then handler = default[handler] end
-		if handler.luapat then -- lua pattern
-			local found = { line:find(handler.luapat, 1) }
-			while found[1] do
-				if (event.freeFrom or found[1] <= column) and column <= found[2] then
-					local info = { from = found[1], to = found[2] }
-					local i = 3
-					while found[i] do
-						info[i - 2] = found[i]
-						i = i + 1
+	local function formatFind(from, to, ...) return { from = from, to = to, ... } end
+	local function iter(matcher)
+		local ret
+		if matcher.luapat then
+			local pat = matcher.luapat
+			ret = function(_, from)
+				local ret = formatFind(line:find(pat, from))
+				if ret[1] then return ret.to + 1, ret end
+			end
+		else
+			local re = vim.regex(matcher.vimre)
+			ret = function(_, _from)
+				local from, to = re:match_str(line:sub(_from))
+				if not from then return end
+				from, to = from + _from, to + _from - 1
+				local ret = vim.fn.matchlist(line:sub(from, to), matcher.vimre) -- includes entire match
+				ret.from = from
+				ret.to = to
+				return to + 1, ret
+			end
+		end
+		return ret, nil, 1
+	end
+
+	if type(filter) ~= 'function' then
+		local prio = filter
+		filter = function(order, matcher, match)
+			return prio.order * order
+				+ prio.matcher * (matcher.weight or 0)
+				+ prio.offset * (match.from - column)
+				+ prio.length * #match[1]
+		end
+	end
+	local order = {}
+
+	if type(matchers) == 'function' then matchers = matchers(event) end
+	for i, matcher in ipairs(matchers) do
+		if type(matcher) == 'string' then matcher = default[matcher] end
+		for _, match in iter(matcher) do
+			if column <= match.to then
+				if match.from <= column then -- cursor within match
+					if matcher.use(match[1], match, event) ~= false then
+						if event.opts.setCol then
+							local col = event.opts.setCol(event, match)
+							if col then vim.api.nvim_win_set_cursor(0, { event.line, col }) end
+						end
+						return true
 					end
-					if handler.use(info[1], info, event) ~= false then return true end -- handler success
+				else
+					order[#order + 1] = { filter(i, matcher, match), matcher, match }
 				end
-				found = { line:find(handler.luapat, found[2] + 1) }
 			end
-		else -- vim regex
-			local re = vim.regex(handler.vimre)
-			local offset = 1
-			local from, to = re:match_str(line)
-			while from do
-				from, to = from + offset, to + offset - 1
-				if (event.freeFrom or from[1] <= column) and column <= to then
-					local info = vim.fn.matchlist(line:sub(from, to), handler.vimre) -- includes \\0
-					info.from = from
-					info.to = to
-					if handler.use(info[2], info, event) ~= false then return true end -- handler success
-				end
-				offset = to + 1
-				from, to = re:match_str(line:sub(offset))
+		end
+	end
+
+	table.sort(order, function(a, b) return a[1] < b[1] end)
+	if M.debug then vim.notify('reform.util.findMatch order: ' .. vim.inspect(order)) end
+	for _, pair in ipairs(order) do
+		if pair[2].use(pair[3][1], pair[3], event) ~= false then
+			if event.opts.setCol then
+				local col = event.opts.setCol(event, pair[3])
+				if col then vim.api.nvim_win_set_cursor(0, { event.line, col }) end
 			end
+			return true
 		end
 	end
 

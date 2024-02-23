@@ -1,3 +1,4 @@
+---@diagnostic disable: param-type-mismatch, need-check-nil
 ---@type reform.docmd
 ---@diagnostic disable-next-line: missing-fields
 local M = {
@@ -53,19 +54,32 @@ function M.defaults.overrides.convert(doc, contents)
 	local ft = vim.bo.filetype
 	if M.config.ft == true or M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
-			local f = io.open(M.config.debug, 'a+')
-			local has = f:read '*l'
-			f:write(str)
-			f:close()
-			local ret = require 'reform.formatter'(str, ft)
-			if not has then
-				io.open(M.config.debug, 'w'):close()
+			local has
+			if M.config.debug:sub(1, 1) == '"' then
+				vim.fn.setreg(M.config.debug:sub(2, 1), str)
 			else
-				f = io.open(M.config.debug, 'a')
-				f:write '\nFMT>>>\n'
-				f:write(table.concat(ret, '\n'))
-				f:write '<<<FMT\n'
+				local f = io.open(M.config.debug, 'a+')
+				has = f:read '*l'
+				f:write(str)
 				f:close()
+			end
+			local ret = require 'reform.formatter'(str, ft)
+			if M.config.debug:sub(1, 1) == '"' then
+				if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
+					vim.fn.setreg(M.config.debug:sub(2, 2), str .. '\n\n>>>\n\n' .. table.concat(ret, '\n'))
+				else
+					vim.fn.setreg(M.config.debug:sub(3, 3), table.concat(ret, '\n'))
+				end
+			else
+				if not has then
+					io.open(M.config.debug, 'w'):close()
+				else
+					local f = io.open(M.config.debug, 'a')
+					f:write '\nFMT>>>\n'
+					f:write(table.concat(ret, '\n'))
+					f:write '<<<FMT\n'
+					f:close()
+				end
 			end
 			return ret
 		elseif M.config.debug then
@@ -121,7 +135,11 @@ function M.defaults.overrides.convert_sig(sig, ft, _)
 		local s = ret[2]:find '___'
 		ret[2] = ret[2]:gsub('___', '', 1)
 		local e = ret[2]:find '___'
-		ret[2] = ret[2]:gsub('___', '', 1)
+		if not e then
+			_, e = ret[2]:find('^[%w_]+%W', s)
+		else
+			ret[2] = ret[2]:gsub('___', '', 1)
+		end
 		return ret, { s - 1, e - 1 }
 	end
 

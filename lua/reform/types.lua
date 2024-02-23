@@ -1,14 +1,15 @@
 ---@alias reform.util.WinConfig vim.api.keyset.float_config|{winhl:table<string,string>}
----@alias reform.util.Event {buf:integer,line:integer,column:integer,freeFrom?:boolean,action:string}
----@alias reform.util.MatchInfo {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
----@alias reform.util.CursorMatchHandler {luapat?:string,vimre?:string,use:fun(match:string,info:reform.util.MatchInfo,ev:reform.util.Event):nil|false} returns false for failure
----@alias reform.util.NamedCursorMatchHandlers table<string,reform.util.CursorMatchHandler>
----@alias reform.util.CursorMatchRefs table<integer,reform.util.CursorMatchHandler|string> matchers or their references by name
----@alias reform.util.CursorMatcherConfig reform.util.CursorMatchRefs|fun(event:reform.util.Event):reform.util.CursorMatchRefs regex & matched cursor text handler pairs or reference to predefined handlers
+---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
+---@alias reform.util.MatcherSorting {order:integer,matcher:integer,offset:integer,length:integer}|fun(order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer
+---@alias reform.util.Event {buf:integer,line:integer,column:integer,opts:{noFromCheck?:boolean,sorting?:reform.util.MatcherSorting,setCol?:fun(ev:reform.util.Event,match:reform.util.Match)?:integer}}
+---@alias reform.util.Matcher {luapat?:string,vimre?:string,weight?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure
+---@alias reform.util.MatcherMap table<string,reform.util.Matcher>
+---@alias reform.util.MatcherRefs table<integer,reform.util.Matcher|string> matchers or their references by name
+---@alias reform.util.MatcherList reform.util.MatcherRefs|fun(event:reform.util.Event):reform.util.MatcherRefs regex & matched text handler pairs or reference to predefined matchers
 ---@class reform.util
 ---@field winConfig reform.util.WinConfig default window configuration
 ---@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
----@field findCursorMatch fun(event:reform.util.Event,config:reform.util.CursorMatcherConfig,knownHandlers:reform.util.NamedCursorMatchHandlers):boolean
+---@field findMatch fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,sorting:reform.util.MatcherSorting):boolean
 
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
 
@@ -60,25 +61,26 @@
 ---@field fallback? 'noop'|'definition'|{copy:boolean,print:boolean,branch:'current'|'default'|fun(ev:reform.util.Event):string}
 ---       - 'copy','print' the git link generated for current cursor line
 ---@field mappings? nvim.Keymap[] mappings for opening links or use reform.ink.key(), reform.link.mouse()
----@field handlers? reform.util.CursorMatcherConfig
+---@field matchers? reform.util.MatcherList
 
 ---@class reform.link
 ---@field defaults reform.link.Config
 ---@field config reform.link.Config
 ---@field key fun() open link under caret
 ---@field mouse fun() open link under mouse - at click position
----@field handle fun(ev:reform.util.Event) use setup handlers to open link at line:col
+---@field handle fun(ev:reform.util.Event) use setup matchers to open link at line:col
 ---@field setup fun(config:reform.link.Config) set your custom shortcuts+actions or disable the feature
 
 ---@class reform.toggle.Config
----@field mappings? {[1]:string|string[], [2]:string, [3]:reform.util.Event}[] mappings for actions - mode, keybind, action
----@field handlers? reform.util.CursorMatcherConfig
+---@field mappings? {[1]:string|string[], [2]:string, [3]:{action:'tgl'|'inc'|'dec',afterCursor?:boolean,moveCursor?:boolean}}[] mappings for actions - mode, keybind, action
+---@field matchers? reform.util.MatcherList
+---@field sorting? reform.util.MatcherSorting
 
 ---@class reform.toggle
 ---@field defaults reform.toggle.Config
 ---@field config reform.toggle.Config
 ---@field genBind fun(evCfg:reform.util.Event) generate binding with preconfigured event
----@field handle fun(ev:reform.util.Event) use setup handlers to change value at line:col
+---@field handle fun(ev:reform.util.Event) use setup matchers to change value at line:col
 ---@field setup fun(config:reform.link.Config) set your custom shortcuts+actions or disable the feature
 
 ---@class reform.Config

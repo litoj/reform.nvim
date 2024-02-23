@@ -3,9 +3,10 @@ local M = {
 	defaults = {
 		unknown = 'definition',
 		mappings = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gL' } },
+		sorting = function(i) return i end,
 	},
 }
-M.handlers = {
+M.matchers = {
 	markdown_url = {
 		luapat = '%[.-%]%((https?://[^)]-)%)',
 		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
@@ -83,7 +84,7 @@ M.handlers = {
 		end,
 	},
 }
-M.defaults.handlers = {
+M.defaults.matchers = {
 	'markdown_url',
 	'any_url',
 	'markdown_file_uri',
@@ -95,11 +96,14 @@ M.defaults.handlers = {
 }
 
 function M.handle(ev)
-	if require('reform.util').findCursorMatch(ev, M.config.handlers, M.handlers) then return end
+	if not ev.opts then ev.opts = {} end
+	if require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.sorting) then
+		return
+	end
 
 	local cfg = M.config.fallback
-	if cfg == 'definition' or ev.action == 'mouse' then
-		if ev.action == 'mouse' then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
+	if cfg == 'definition' or ev.opts.mouse then
+		if ev.opts.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
 		return vim.lsp.buf.definition()
 	elseif type(cfg) ~= 'table' then
 		return vim.notify 'No link found'
@@ -146,7 +150,7 @@ end
 
 function M.mouse()
 	local data = vim.fn.getmousepos()
-	data.action = 'mouse'
+	data.opts = { mouse = true }
 	data.buf = vim.api.nvim_win_get_buf(data.winid)
 	M.handle(data)
 end

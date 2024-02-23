@@ -125,7 +125,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 							type_fmt(&doc, &fmt);
 						}
 					}
-					while (*doc++ != '>') {} // strip all extra useless table data
+					while (*doc && *doc++ != '>') {} // strip all extra useless table data
 					*fmt++ = '}';
 				} else if (*doc == ' ' && doc[1] == '{') doc++;
 				else { // unspecified table - 'table'
@@ -143,6 +143,10 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						type_fmt(&doc, &fmt);
 						while (*doc != ']') *fmt++ = *doc++;
 						*fmt++ = *doc++;
+					} else if (alike(doc, "...(too long)...")) {
+						doc += 16;
+						while (*doc && *doc != '}') doc++;
+						fmt = append(fmt, "TooLong");
 					} else if (*doc != '}')
 						while (*doc >= '0' && *doc != ':') *fmt++ = *doc++;
 					else break;
@@ -190,6 +194,11 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						if (*doc == ':') { // arg type
 							*fmt++ = *doc++;
 							type_fmt(&doc, &fmt);
+							while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
+							if (alike(doc, "___")) {
+								doc += 3;
+								fmt = append(fmt, "___");
+							}
 						}
 					} while (*doc == ',');
 				*fmt++ = ')';
