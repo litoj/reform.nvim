@@ -106,7 +106,7 @@ require'reform'.setup {
       'state',      -- enable(d) disable(d)
       'toggle',     -- on off
       'answer',     -- yes no
-      'sign',       -- + -
+      'sign',       -- + * ^ - / %
     },
   },
   man = false -- custom manpage formatting (using formatter(bash))

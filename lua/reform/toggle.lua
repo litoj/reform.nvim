@@ -17,10 +17,11 @@ function M.replace(match, event, with)
 end
 function M.genSeqHandler(seq, matcher)
 	if not matcher then matcher = {} end
-	matcher.use = function(_, match, ev)
+	matcher.use = function(val, match, ev)
 		local dir = ev.opts.action == 'dec' and -1 or (ev.opts.action == 'inc' and 1 or #seq / 2)
 		M.replace(match, ev, seq[(seq[match[1]] - 1 + dir) % #seq + 1])
 	end
+
 	if matcher.luapat or matcher.vimre then
 		for i, v in ipairs(seq) do
 			seq[v] = i
@@ -38,35 +39,33 @@ function M.genSeqHandler(seq, matcher)
 				seq[v] = i
 				pat[i] = v:gsub('[\\.*[%]]', '\\%0')
 			end
-			matcher.vimre = table.concat(pat, '\\|')
+			matcher.vimre = [[\<\(]] .. table.concat(pat, '\\|') .. [[\)\>]]
 		end
 	end
+
 	return matcher
 end
 
 M.matchers = {
-	answer = M.genSeqHandler({ 'yes', 'no' }, { vimre = [[\<\(yes\|no\)\>]] }),
+	answer = M.genSeqHandler { 'yes', 'no' },
 	bool = {
-		vimre = [[[Tt]rue\|[Ff]alse]],
+		vimre = [[\<\([Tt]rue\|[Ff]alse\)\>]],
 		weight = 5,
-		use = function(_, match, event)
+		use = function(val, match, event)
 			if match[1]:byte(2) == 114 then
-				M.replace(match, event, match[1]:byte() == 84 and 'False' or 'false')
+				M.replace(match, event, val:byte() == 84 and 'False' or 'false')
 			else
-				M.replace(match, event, match[1]:byte() == 70 and 'True' or 'true')
+				M.replace(match, event, val:byte() == 70 and 'True' or 'true')
 			end
 		end,
 	},
 	comparator = M.genSeqHandler { '>', '<' },
-	direction = M.genSeqHandler(
-		{ 'up', 'north', 'east', 'down', 'south', 'west' },
-		{ vimre = [[\<\(up\|north\|east\|down\|south\|west\)\>]] }
-	),
+	direction = M.genSeqHandler { 'up', 'north', 'east', 'down', 'south', 'west' },
 	int = {
 		vimre = [[-\?\d\+]],
 		weight = 10,
-		use = function(_, match, event)
-			local num = tonumber(match[1])
+		use = function(val, match, event)
+			local num = tonumber(val)
 			if event.opts.action == 'tgl' then
 				M.replace(match, event, tostring(-num))
 			else
@@ -74,10 +73,21 @@ M.matchers = {
 			end
 		end,
 	},
-	logic = M.genSeqHandler({ 'and', '&', 'or', '|' }, { vimre = [[[&|]\|\<and\>\|\<or\>]] }),
-	sign = M.genSeqHandler { '+', '-' },
+	logic = {
+		vimre = [[[&|]\|\<and\>\|\<or\>]],
+		use = function(val, match, event)
+			if val == '&' or val == '|' then
+				if vim.bo[event.buf] == 'lua' then return false end
+				M.replace(match, event, val == '|' and '&' or '|')
+			else
+				if vim.bo[event.buf] ~= 'lua' then return false end
+				M.replace(match, event, val == 'or' and 'and' or 'or')
+			end
+		end,
+	},
+	sign = M.genSeqHandler { '+', '*', '^', '-', '/', '%' },
 	state = {
-		vimre = [[enabled\?\|disabled\?]],
+		vimre = [[\<\(enabled\?\|disabled\?\)\>]],
 		use = function(_, match, event)
 			if match[1]:byte() == 101 then
 				M.replace(match, event, match[1]:byte(-1) == 100 and 'disabled' or 'disable')
@@ -86,7 +96,7 @@ M.matchers = {
 			end
 		end,
 	},
-	toggle = M.genSeqHandler({ 'on', 'off' }, { vimre = [[\<o(n\|ff)\>]] }),
+	toggle = M.genSeqHandler { 'on', 'off' },
 }
 M.defaults.matchers =
 	{ 'int', 'direction', 'bool', 'comparator', 'logic', 'state', 'toggle', 'answer', 'sign' }

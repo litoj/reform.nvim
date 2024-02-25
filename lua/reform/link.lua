@@ -65,7 +65,7 @@ M.matchers = {
 					end
 				end
 			end
-			if not file then return 1 end
+			if not file then return false end
 
 			vim.cmd.e(file)
 			if pos then
@@ -77,9 +77,9 @@ M.matchers = {
 		end,
 	},
 	nvim_plugin = {
-		luapat = '["\']([%w_-]+[%w_.%-]+/[%w_.%-]+)[\'"]',
+		luapat = '["\']([%w_%-]+[%w_.%-]*/[%w_.%-]+)[\'"]',
 		use = function(url, _, ev)
-			if not ({ vim = 1, lua = 1, markdown = 1 })[vim.bo[ev.buf].ft] then return 1 end
+			if not ({ vim = 1, lua = 1, markdown = 1 })[vim.bo[ev.buf].ft] then return false end
 			vim.fn.jobstart(("xdg-open 'https://github.com/%s'"):format(url), { detach = true })
 		end,
 	},
