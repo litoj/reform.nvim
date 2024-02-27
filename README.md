@@ -15,7 +15,7 @@ feel more like an IDE with a few QoL improvements (all fully customizable).
   - [ ] support more languages - `Rust`, `go`…
 - `link`: clickable links like any other IDE
   - keybind creation builtin, but fully optional
-  - modular handlers by regex/lua patterns → a lot can be used for a match
+  - modular handlers by vimregex/luaptn → a lot can be used for a match (see also `toggle` module)
     - handler for stacktrace filepaths with cursor position supporting terminal line-wrapping
     - uri handlers, nvim plugin link handler… (see default config)
 - `vim`.`ui`.`input`/`select` as popups floating at the cursor (instead of cmdline)
@@ -53,7 +53,8 @@ require'reform'.setup {
       -- lang = name of supported language; boolean/formatter
       lang = true|fun(docs: string, vim.bo.ft): string[]
     },
-    debug = false|'', -- filename for saving received docs before parsing (for crash debugging)
+    labels = {cs = 'c_sharp', csharp = 'c_sharp'}, -- fixes of md ft labels for file previews
+    debug = false|'', -- filename/'"io' for input+output save to register(s) or true to print src
   },
   input = true|fun()|{ -- vim.ui.input (used in vim.lsp.buf.rename)
     window = { height = 1, row = -3}+winConfig,
@@ -101,12 +102,11 @@ require'reform'.setup {
       'int',        -- (-)123 - increase decrease or toggle sign
       'direction',  -- up north east down south west
       'bool',       -- true/True false/False
-      'comparator', -- > <
-      'logic',      -- & and | or
+      'logic',      -- & && and | || or
       'state',      -- enable(d) disable(d)
       'toggle',     -- on off
       'answer',     -- yes no
-      'sign',       -- + * ^ - / %
+      'sign',       -- < = + * ^ > ! - / %
     },
   },
   man = false -- custom manpage formatting (using formatter(bash))

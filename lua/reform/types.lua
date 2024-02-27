@@ -24,6 +24,7 @@
 ---@field overrides? reform.docmd.Overrides lspdocs-related replacements
 ---@field ft? table<string,boolean|fun(string,vim.bo.ft):string[]>|true `ft` for which docs should be reformed (if supported)
 ---@field debug? string|boolean path for writing docs before processing or true for just pringing
+---@field labels? table<string,string> map of corrections for markdown filetype labels (' man' → bash)
 
 ---@class reform.docmd.Defaults
 ---@field config reform.docmd.Config

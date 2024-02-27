@@ -59,7 +59,6 @@ M.matchers = {
 			end
 		end,
 	},
-	comparator = M.genSeqHandler { '>', '<' },
 	direction = M.genSeqHandler { 'up', 'north', 'east', 'down', 'south', 'west' },
 	int = {
 		vimre = [[-\?\d\+]],
@@ -74,18 +73,18 @@ M.matchers = {
 		end,
 	},
 	logic = {
-		vimre = [[[&|]\|\<and\>\|\<or\>]],
+		vimre = [[[&|]\+\|\<and\>\|\<or\>]], -- TODO: full line negation - [~!]= → ==; && → ||...
 		use = function(val, match, event)
-			if val == '&' or val == '|' then
+			if val:sub(1, 1) == '&' or val:sub(1, 1) == '|' then
 				if vim.bo[event.buf] == 'lua' then return false end
-				M.replace(match, event, val == '|' and '&' or '|')
+				M.replace(match, event, (val:sub(1, 1) == '|' and { '&', '&&' } or { '|', '||' })[#val])
 			else
 				if vim.bo[event.buf] ~= 'lua' then return false end
 				M.replace(match, event, val == 'or' and 'and' or 'or')
 			end
 		end,
 	},
-	sign = M.genSeqHandler { '+', '*', '^', '-', '/', '%' },
+	sign = M.genSeqHandler { '<', '=', '+', '*', '^', '>', '!', '-', '/', '%' },
 	state = {
 		vimre = [[\<\(enabled\?\|disabled\?\)\>]],
 		use = function(_, match, event)
@@ -98,8 +97,7 @@ M.matchers = {
 	},
 	toggle = M.genSeqHandler { 'on', 'off' },
 }
-M.defaults.matchers =
-	{ 'int', 'direction', 'bool', 'comparator', 'logic', 'state', 'toggle', 'answer', 'sign' }
+M.defaults.matchers = { 'int', 'direction', 'bool', 'logic', 'state', 'toggle', 'answer', 'sign' }
 
 function M.handle(ev)
 	if not ev.opts then ev.opts = {} end

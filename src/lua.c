@@ -606,11 +606,10 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 					}
 				} else { // highlight other section candidates - capitalize first letter
 					char *fmtTmp = fmt - 1;
-					while (fmtTmp > fmt0 && ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
-					if (*fmtTmp >= 'A' &&
-            *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
-            (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' ||
-             alike((in*)fmtTmp - 2, "\n ") > 0)) {
+					while (fmt0 < fmtTmp && (('a' <= *fmtTmp && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
+					if ('A' <= *++fmtTmp && *fmtTmp <= 'Z' // '\n Example:' -> '\n **Example:**'
+						&& (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n'
+						|| alike((in *) fmtTmp - 2, "\n ") > 0)) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 						*++fmtTmp = '*';
 						*++fmtTmp = '*';

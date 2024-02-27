@@ -12,7 +12,7 @@ OBJ:=$(SRC:.c=.o)
 TARGET:=../lua/reform/formatter.so
 
 formatter:
-	@-[ -f main.out ] && $(MAKE) clean
+	@[ ! -f main.out ] || $(MAKE) clean
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(OBJ) formatter.o

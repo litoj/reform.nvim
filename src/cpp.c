@@ -1,4 +1,5 @@
 #include "utils.h"
+
 char *cpp_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
@@ -18,9 +19,12 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 		*fmt++  = '\n';
 		if (alike(doc, "###") > 0) { // strip type defs - already in code block
 			while (*++doc != '\n' || *++doc == '-' || *doc == '\n') {}
-			if (alike(doc, "Param") > 0 || alike(doc, "Type") > 0) {
+			if (alike(doc, "Param") > 0) {
 				while (*++doc != '\n') {}
 				while (*++doc != '\n' || *++doc == '-') {}
+			} else if (alike(doc, "Type") > 0) {
+				while (*++doc != '\n') {}
+				doc++;
 			}
 			*fmt++ = '\n';
 		}

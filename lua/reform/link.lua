@@ -21,9 +21,20 @@ M.matchers = {
 			vim.cmd.e(file:gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end))
 		end,
 	},
-	markdown_file_path = { luapat = '%[.-%]%(([^)]-)%)', use = vim.cmd.e },
-	reform_vimdoc_ref = { luapat = '%[([^%] ]-)%][^(%]]', use = vim.cmd.help },
-	vimdoc_ref = { luapat = '|(%S-)|', use = vim.cmd.help },
+	markdown_file_path = {
+		luapat = '%[.-%]%(([^)]-)%)',
+		use = function(match)
+			local f = io.open(match)
+			if not f then return end
+			f:close()
+			vim.cmd.e(match)
+		end,
+	},
+	reform_vimdoc_ref = {
+		luapat = '%[([^%] ]-)%][^(%]]',
+		use = function(match) return pcall(vim.cmd.help, match) end,
+	},
+	vimdoc_ref = { luapat = '|(%S-)|', use = function(match) return pcall(vim.cmd.help, match) end },
 	stacktrace_file_path = {
 		luapat = '(~?[%w/._%-]+:?%d*:?%d*)',
 		use = function(path, matches, ev)

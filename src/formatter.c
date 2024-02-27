@@ -1,5 +1,6 @@
 #include "bash.h"
 #include "cpp.h"
+#include "csharp.h"
 #include "java.h"
 #include "lua.h"
 #include "typescript.h"
@@ -13,22 +14,23 @@
 #include <stdlib.h>
 
 // clang-format off
-#define p(fmt, codesign) { #fmt, fmt##_fmt, codesign}
+#define p(fmt) { #fmt, fmt##_fmt, #fmt"\n"}
 // clang-format on
 static struct pair {
 	const char *ft;
 	char *(*formatter)(const in *, char *, int);
-	const char *codesign;
-} avail[] = {
-  p(lua, "lua\n"),
-  p(cpp, "cpp\n"),
-  {"c", cpp_fmt, "c\n"},
-  p(java, "java\n"),
-  p(bash, " man\n"),
+	const char *label;
+} fmts[] = {
+  p(lua),
+  {"cpp", cpp_fmt, NULL},
+  {"c", cpp_fmt, NULL},
+  {"cs", csharp_fmt, "csharp\n"},
+  p(java),
+  {"bash", bash_fmt, " man\n"},
   {"sh", bash_fmt, " man\n"},
   {"javascript", typescript_fmt, "typescript\n"},
-  {"typescript", typescript_fmt, "typescript\n"}};
-static int langs = sizeof(avail) / sizeof(struct pair);
+  p(typescript)};
+static const int fmtsN = sizeof(fmts) / sizeof(struct pair);
 
 #ifdef DEBUG
 int main(int argc, char *argv[]) {
@@ -67,14 +69,12 @@ static int l_fmt(lua_State *L) {
 	}
 #endif
 
-	for (int i = 0; i < langs; i++) {
-		int match = alike((in *) ft, avail[i].ft);
+	for (int i = 0; i < fmtsN; i++) {
+		int match = alike((in *) ft, fmts[i].ft);
 		if (match > 0 && !ft[match]) {
-			if (alike(doc, "```") > 0 && alike(doc + len - 4, "\n```") > 0 && //
-				alike(doc + 3, avail[i].codesign) <= 0 && doc[3] != '\n')
-				break; // don't parse file preview
+			if (fmts[i].label && alike(doc + 3, fmts[i].label) <= 0) continue; // filter some snippets
 			char *fmt = (char *) malloc((len + 50) * sizeof(char));
-			char *end = avail[i].formatter(doc, fmt, len);
+			char *end = fmts[i].formatter(doc, fmt, len);
 
 			if (end > fmt)
 				while ((in) * --end <= (in) ' ') {}
@@ -118,7 +118,10 @@ static int l_fmt(lua_State *L) {
 	}
 #ifdef DEBUG
 	if (argc < 3) free(doc);
-	printf("\033[91mUnsupported filetype: %s\033[0m\n%s\n", ft, doc);
+	printf("\033[91mUnsupported filetype: %s\033[0m\nSupported ft are:\n", ft);
+	for (int i = 0; i < fmtsN; i++) {
+		printf(" \033[32m%s\033[31m: \033[33m```%s", fmts[i].ft, fmts[i].label);
+	}
 	return 1;
 #else
 	char *fmt       = (char *) malloc(len + 1);

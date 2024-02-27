@@ -17,6 +17,7 @@ local M = {
 				cmp_doc = true,
 				cmp_sig = true,
 			},
+			labels = { cs = 'c_sharp', csharp = 'c_sharp' },
 			ft = true,
 			debug = false,
 		},
@@ -52,7 +53,16 @@ function M.defaults.overrides.convert(doc, contents)
 	end
 
 	local ft = vim.bo.filetype
-	if M.config.ft == true or M.config.ft[ft] == true then
+	if str:sub(1, 3) == '```' and str:sub(-4) == '\n```' then -- file preview
+		local from, to, label = str:find('^(%w*)\n', 4)
+		if str:find('^﻿', to + 1) then -- windows files cmp preview bug
+			str = '```' .. (M.config.labels[label] or label) .. '\n' .. str:sub(to + 4)
+		else
+			label = M.config.labels[label]
+			if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
+		end
+		return vim.split(str, '\n')
+	elseif M.config.ft == true or M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
 			local has
 			if M.config.debug:sub(1, 1) == '"' then
@@ -94,7 +104,7 @@ function M.defaults.overrides.convert(doc, contents)
 	return vim.split(
 		str
 			:gsub('%s+(```\n)', '%1')
-			:gsub('([ \n\t])`([^`\n]+%s[^`\n]+)`%s*', ('%1\n```%s\n%2```\n'):format(ft)),
+			:gsub('([ \n\t])`([^`\n]+%s[^`\n]+)`%s*', ('%%1\n```%s\n%%2```\n'):format(ft)),
 		'\n'
 	)
 end
