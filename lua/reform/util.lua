@@ -68,7 +68,7 @@ function M.findMatch(event, matchers, default, filter)
 		return ret, nil, 1
 	end
 
-	if type(filter) ~= 'function' then
+	if filter and type(filter) ~= 'function' then
 		local prio = filter
 		filter = function(order, matcher, match)
 			return prio.order * order
@@ -92,13 +92,14 @@ function M.findMatch(event, matchers, default, filter)
 						end
 						return true
 					end
-				else
+				elseif filter then
 					order[#order + 1] = { filter(i, matcher, match), matcher, match }
 				end
 			end
 		end
 	end
 
+	if not filter then return false end
 	table.sort(order, function(a, b) return a[1] < b[1] end)
 	if M.debug then vim.notify('reform.util.findMatch order: ' .. vim.inspect(order)) end
 	for _, pair in ipairs(order) do

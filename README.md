@@ -60,8 +60,8 @@ require'reform'.setup {
     keymaps = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
       cancel = { '<Esc>', '<C-q>' },
       confirm = { '<CR>' },
-      histPrev = { '<Up>', '<M-k>' },
-      histNext = { '<Down>', '<M-j>' },
+      histPrev = { '<Up>', '<A-k>' },
+      histNext = { '<Down>', '<A-j>' },
     },
   },
   select = true|fun()|{ -- vim.ui.select (used in vim.lsp.buf.code_action)

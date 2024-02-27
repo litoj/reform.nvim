@@ -1,6 +1,6 @@
 ---@alias reform.util.WinConfig vim.api.keyset.float_config|{winhl:table<string,string>}
 ---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
----@alias reform.util.MatcherSorting {order:integer,matcher:integer,offset:integer,length:integer}|fun(order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer
+---@alias reform.util.MatcherSorting {order:integer,matcher:integer,offset:integer,length:integer}|fun(order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer|false
 ---@alias reform.util.Event {buf:integer,line:integer,column:integer,opts:{noFromCheck?:boolean,sorting?:reform.util.MatcherSorting,setCol?:fun(ev:reform.util.Event,match:reform.util.Match):integer|nil}}
 ---@alias reform.util.Matcher {luapat?:string,vimre?:string,weight?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure
 ---@alias reform.util.MatcherMap table<string,reform.util.Matcher>

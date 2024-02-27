@@ -3,12 +3,12 @@ local M = {
 	defaults = {
 		unknown = 'definition',
 		mappings = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gL' } },
-		sorting = function(i) return i end,
+		sorting = false,
 	},
 }
 M.matchers = {
 	markdown_url = {
-		luapat = '%[.-%]%((https?://[^)]-)%)',
+		luapat = '%[.-%]%((https?://[^)]+))%',
 		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
 	},
 	any_url = {
@@ -25,14 +25,14 @@ M.matchers = {
 	reform_vimdoc_ref = { luapat = '%[([^%] ]-)%][^(%]]', use = vim.cmd.help },
 	vimdoc_ref = { luapat = '|(%S-)|', use = vim.cmd.help },
 	stacktrace_file_path = {
-		luapat = '(~?[%w._%-]*/[%w/._%-]*:?%d*:?%d*)',
-		use = function(path, _, ev)
-			local bufname =
+		luapat = '(~?[%w/._%-]+:?%d*:?%d*)',
+		use = function(path, matches, ev)
+			local bufdir =
 				vim.api.nvim_buf_get_name(ev.buf):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '')
 			local function real(path)
 				local pos = path:match ':.+$' or false
 				if pos then path = path:sub(1, #path - #pos) end
-				for _, f in ipairs { bufname .. path, path:gsub('^~', os.getenv 'HOME') } do
+				for _, f in ipairs { bufdir .. path, path:gsub('^~', os.getenv 'HOME') } do
 					local ok = io.open(f)
 					if ok then
 						ok:close()
@@ -45,9 +45,10 @@ M.matchers = {
 			local file, pos = real(path)
 			if not file then
 				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
-				local src = { lines[1]:find '(~?[%w._%-]*/[%w/._%-]*:?%d*:?%d*)' }
-				if not pos and src[2] == #src[3] and lines[2] then -- next line
-					file, pos = real(path .. lines[2]:match '^([%w/._%-]+:?%d*:?%d*)')
+				local src = { matches.from, matches.to, matches[1] }
+				if not pos and src[2] == #lines[1] and lines[2] then -- next line
+					path = path .. lines[2]:match '^([%w/._%-]*:?%d*:?%d*)'
+					file, pos = real(path)
 				end
 				if not path:match '^/home' then
 					local i = 1
@@ -55,7 +56,7 @@ M.matchers = {
 						src = {
 							vim.api
 								.nvim_buf_get_lines(ev.buf, ev.line - i - 1, ev.line - i, true)[1]
-								:find '(~?[%w/._%-]*/[%w/._%-]*)$',
+								:find '(~?[%w/._%-]+)$',
 						}
 						if src[3] then
 							path = src[3] .. path
@@ -77,7 +78,7 @@ M.matchers = {
 		end,
 	},
 	nvim_plugin = {
-		luapat = '["\']([%w_%-]+[%w_.%-]*/[%w_.%-]+)[\'"]',
+		luapat = '["\'](%w+[%w_.%-]*/[%w_.%-]+)[\'"]',
 		use = function(url, _, ev)
 			if not ({ vim = 1, lua = 1, markdown = 1 })[vim.bo[ev.buf].ft] then return false end
 			vim.fn.jobstart(("xdg-open 'https://github.com/%s'"):format(url), { detach = true })
@@ -112,7 +113,9 @@ function M.handle(ev)
 	local f = io.popen('git config --get remote.origin.url', 'r')
 	-- get base url, convert ssh to http url
 	local s = {}
-	s[#s + 1] = f:read('*l'):gsub('git@(.-):', 'https://%1/'):gsub('%.git$', '')
+	s[#s + 1] = f:read '*l'
+	if #s == 0 then return vim.notify 'No link found' end
+	s[1] = s[1]:gsub('git@(.-):', 'https://%1/'):gsub('%.git$', '')
 	-- github uses different path from gitlab
 	s[#s + 1] = s[1]:find('github.com', 1, true) and '/blob/' or '/-/blob/'
 	f:close()

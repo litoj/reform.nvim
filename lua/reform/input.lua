@@ -10,8 +10,8 @@ local M = {
 		keymaps = {
 			cancel = { '<Esc>', '<C-q>' },
 			confirm = { '<CR>' },
-			histPrev = { '<Up>', '<M-k>' },
-			histNext = { '<Down>', '<M-j>' },
+			histPrev = { '<Up>', '<A-k>' },
+			histNext = { '<Down>', '<A-j>' },
 		},
 	},
 }
