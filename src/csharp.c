@@ -2,9 +2,19 @@
 
 char *csharp_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
-	doc--;
-	const char *fmt0 = fmt;
-	char kind        = 0;
+	const char *fmt0 = fmt; // for checking beginning of output
+	fmt              = append(fmt, "```c_sharp\n");
+	doc += 10;
+	if (*doc == '(') {
+		if (doc[1] == 'l') doc += 17;
+	}
+	while (*doc != '`' || doc[1] != '`' || doc[2] != '`') *fmt++ = *doc++;
+	doc += 3;
+	while (*--fmt <= ' ') {}
+	fmt = append(fmt + 1, "```\n\n");
+
+	if (doc >= docEnd) return fmt - 1;
+	char kind = 0;
 	while (++doc < docEnd) {
 		switch (*doc) {
 			case '\\':
@@ -16,7 +26,8 @@ char *csharp_fmt(const in *doc, char *fmt, int len) {
 					doc += 4;
 					fmt = append(fmt, "```c_sharp");
 					while (*doc != '\n') doc++;
-					while (*doc != '`' || *++doc != '`' || *++doc != '`') *fmt++ = *doc++;
+					while (*doc != '`' || doc[1] != '`' || doc[2] != '`') *fmt++ = *doc++;
+					doc += 2;
 					fmt = append(fmt - 1, "```");
 				} else {
 					*fmt++ = '`';

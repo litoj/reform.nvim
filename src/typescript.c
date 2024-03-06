@@ -375,38 +375,37 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 
 char *typescript_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
-	char *fmt0       = fmt; // for checking beginning of output
-	if (alike(doc, "```typescript\n") > 0) {
-		fmt = append(fmt, "```ts\n");
-		doc += 14;
-		if (*doc == '(') {
-			if (doc[1] == 'a') {
-				const in *docTmp = doc += 9;
-				while (*doc > ' ' && *doc != '(') doc++;
-				if (*doc == '(') fmt = append(fmt, "function ");
-				doc = docTmp - 1;
-			} else if (doc[1] == 'm') {
-				fmt = append(fmt, "function"); // (method)
-				doc += 8;
-			} else {
-				*fmt++ = '/';
-				*fmt++ = '*';
-				while (*++doc != ')') *fmt++ = *doc;
-				fmt = append(fmt, "*/");
-				doc++;
-			}
-		} else if (alike(doc, "constructor") > 0) {
-			doc += 12;
-			fmt = append(fmt, "function ");
-			while (*doc != '(') *fmt++ = *doc++;
-			fmt = append(fmt, ".constructor");
+	const char *fmt0 = fmt; // for checking beginning of output
+	fmt              = append(fmt, "```ts\n");
+	doc += 14;
+	if (*doc == '(') {
+		if (doc[1] == 'a') {
+			const in *docTmp = doc += 9;
+			while (*doc > ' ' && *doc != '(') doc++;
+			if (*doc == '(') fmt = append(fmt, "function ");
+			doc = docTmp - 1;
+		} else if (doc[1] == 'm') {
+			fmt = append(fmt, "function"); // (method)
+			doc += 8;
+		} else {
+			*fmt++ = '/';
+			*fmt++ = '*';
+			while (*++doc != ')') *fmt++ = *doc;
+			fmt = append(fmt, "*/");
+			doc++;
 		}
-		code_fmt(&doc, &fmt, "```");
-		doc += 3;
-		while (*--fmt <= ' ') {}
-		fmt = append(fmt + 1, "```\n\n");
-		if (doc >= docEnd) return fmt - 1;
-	} else doc--;
+	} else if (alike(doc, "constructor") > 0) {
+		doc += 12;
+		fmt = append(fmt, "function ");
+		while (*doc != '(') *fmt++ = *doc++;
+		fmt = append(fmt, ".constructor");
+	}
+	code_fmt(&doc, &fmt, "```");
+	doc += 3;
+	while (*--fmt <= ' ') {}
+	fmt = append(fmt + 1, "```\n\n");
+
+	if (doc >= docEnd) return fmt - 1;
 	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent
 	char kind    = 0;
 	while (++doc < docEnd) {

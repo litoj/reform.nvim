@@ -30,7 +30,11 @@ return {
 }
 ```
 
+<details><summary>
+
 ### Config defaults
+
+</summary>
 
 ```lua
 -- table of config options for `input` and `select`:
@@ -53,7 +57,8 @@ require'reform'.setup {
       -- lang = name of supported language; boolean/formatter
       lang = true|fun(docs: string, vim.bo.ft): string[]
     },
-    labels = {cs = 'c_sharp', csharp = 'c_sharp'}, -- fixes of md ft labels for file previews
+    labels = {cs = 'c_sharp'}, -- fixes of md ft labels for file previews
+    no_preview = {csharp = true}, -- always parse docs with these code labels
     debug = false|'', -- filename/'"io' for input+output save to register(s) or true to print src
   },
   input = true|fun()|{ -- vim.ui.input (used in vim.lsp.buf.rename)
@@ -92,12 +97,15 @@ require'reform'.setup {
       -- generates links to referenced line in the 'default'/'current'/provided branch
   },
   toggle = true|{ -- quick toggle/change of values under cursor - uses same system as `link`
-    mappings = { -- allow match after cursor col and move mouse to start of match in such case
-      {{'n', 'i'}, '<A-a>', {action = 'inc', noFromCheck = true, setCol = M.setColToStart},
-      {{'n', 'i'}, '<A-A>', {action = 'dec', noFromCheck = true, setCol = M.setColToStart},
-      {{'n', 'i'}, '<A-C-a>', {action = 'tgl'},
+    mappings = { -- if cursor outside match, move cursor to its start
+      {{'n', 'i'}, '<A-a>', {action = 'inc', setCol = 'closer'}, -- closer/start/end of match
+      {{'n', 'i'}, '<A-A>', {action = 'dec', setCol = 'closer'},
+      {{'n', 'i'}, '<A-C-a>', {action = 'tgl', filter={tolerance={startPost=0,endPre=0}}},
     },
-    sorting = { order = 1, matcher = -3, offset = 1, length = 1 }, -- multipliers; least score first
+    filter = {
+      sorting = { order = 1, matcher = 3, offset = 1, length = 1 }, -- multipliers; least score first
+      tolerance = {startPost = inf, endPre = 1}, -- how far and in which directions from cursor is OK
+		},
     handlers = {
       'int',        -- (-)123 - increase decrease or toggle sign
       'direction',  -- up north east down south west
@@ -112,6 +120,8 @@ require'reform'.setup {
   man = false -- custom manpage formatting (using formatter(bash))
 }
 ```
+
+</details>
 
 - setup function can be called at any time again to change the settings at runtime
 

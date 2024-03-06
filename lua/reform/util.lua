@@ -40,7 +40,10 @@ function M.mkWin(buf, opts, prompt)
 end
 
 function M.findMatch(event, matchers, default, filter)
-	if event.opts.sorting then filter = event.opts.sorting end
+	filter = vim.tbl_deep_extend('force', {
+		tolerance = { startPost = 0, startPre = math.huge, endPost = math.huge, endPre = 0 },
+		sorting = { order = 1, matcher = 0, offset = 1, length = 0 },
+	}, filter, event.filter or {})
 	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
 	local column = event.column
 
@@ -68,51 +71,55 @@ function M.findMatch(event, matchers, default, filter)
 		return ret, nil, 1
 	end
 
-	if filter and type(filter) ~= 'function' then
-		local prio = filter
-		filter = function(order, matcher, match)
-			return prio.order * order
-				+ prio.matcher * (matcher.weight or 0)
-				+ prio.offset * (match.from - column)
-				+ prio.length * #match[1]
+	local sorter = filter.sorting
+	if type(sorter) ~= 'function' then
+		local sorting = filter.sorting
+		sorter = function(order, matcher, match)
+			return sorting.order * order
+				+ (
+					(match.from <= column and match.to >= column) and -1000
+					or (
+						sorting.matcher * (matcher.group or 0)
+						+ sorting.offset * math.abs(match.from - column)
+						+ sorting.length * #match[1]
+					)
+				)
 		end
 	end
 	local order = {}
+	local startPre = filter.tolerance.startPre
+	local startPost = filter.tolerance.startPost
+	local endPre = filter.tolerance.endPre
+	local endPost = filter.tolerance.endPost
 
 	if type(matchers) == 'function' then matchers = matchers(event) end
 	for i, matcher in ipairs(matchers) do
 		if type(matcher) == 'string' then matcher = default[matcher] end
 		for _, match in iter(matcher) do
-			if column <= match.to then
-				if match.from <= column then -- cursor within match
-					if matcher.use(match[1], match, event) ~= false then
-						if event.opts.setCol then
-							local col = event.opts.setCol(event, match)
-							if col then vim.api.nvim_win_set_cursor(0, { event.line, col }) end
-						end
-						return true
-					end
-				elseif filter then
-					order[#order + 1] = { filter(i, matcher, match), matcher, match }
-				end
+			local from, to = match.from, match.to
+			if
+				math.abs(from - column) <= ((from <= column) and startPre or startPost)
+				and math.abs(to - column) <= ((to >= column) and endPost or endPre)
+			then
+				order[#order + 1] = { sorter(i, matcher, match), matcher, match }
 			end
 		end
 	end
 
-	if not filter then return false end
+	if not sorter then return false end
 	table.sort(order, function(a, b) return a[1] < b[1] end)
-	if M.debug then vim.notify('reform.util.findMatch order: ' .. vim.inspect(order)) end
-	for _, pair in ipairs(order) do
-		if pair[2].use(pair[3][1], pair[3], event) ~= false then
-			if event.opts.setCol then
-				local col = event.opts.setCol(event, pair[3])
-				if col then vim.api.nvim_win_set_cursor(0, { event.line, col }) end
-			end
-			return true
+	if M.debug then
+		local data = {}
+		for i, v in ipairs(order) do
+			data[i] = { v[1], v[3][1], v[3].from, v[3].to }
 		end
+		vim.notify('reform.util.findMatch.order: ' .. vim.inspect(data))
+	end
+	for _, pair in ipairs(order) do
+		if pair[2].use(pair[3][1], pair[3], event) ~= false then return pair[3] end
 	end
 
-	return false -- parsing failed
+	return false -- no successful matcher found
 end
 
 return M

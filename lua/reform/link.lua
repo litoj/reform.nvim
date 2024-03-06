@@ -3,12 +3,12 @@ local M = {
 	defaults = {
 		unknown = 'definition',
 		mappings = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gL' } },
-		sorting = false,
+		filter = { tolerance = { startPost = 1, endPre = 1 } },
 	},
 }
 M.matchers = {
 	markdown_url = {
-		luapat = '%[.-%]%((https?://[^)]+))%',
+		luapat = '%[.-%]%((https?://[^)]+)%)',
 		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
 	},
 	any_url = {
@@ -16,13 +16,13 @@ M.matchers = {
 		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
 	},
 	markdown_file_uri = {
-		luapat = '%[.-%]%(file://([^)]-)%)',
+		luapat = '%[.-%]%(file://([^)]+)%)',
 		use = function(file) -- [url_decode](http://lua-users.org/wiki/StringRecipes)
 			vim.cmd.e(file:gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end))
 		end,
 	},
 	markdown_file_path = {
-		luapat = '%[.-%]%(([^)]-)%)',
+		luapat = '%[.-%]%(([^)]+)%)',
 		use = function(match)
 			local f = io.open(match)
 			if not f then return end
@@ -108,14 +108,13 @@ M.defaults.matchers = {
 }
 
 function M.handle(ev)
-	if not ev.opts then ev.opts = {} end
-	if require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.sorting) then
+	if require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.filter) then
 		return
 	end
 
 	local cfg = M.config.fallback
-	if cfg == 'definition' or ev.opts.mouse then
-		if ev.opts.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
+	if cfg == 'definition' or ev.mouse then
+		if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
 		return vim.lsp.buf.definition()
 	elseif type(cfg) ~= 'table' then
 		return vim.notify 'No link found'
@@ -164,7 +163,7 @@ end
 
 function M.mouse()
 	local data = vim.fn.getmousepos()
-	data.opts = { mouse = true }
+	data.mouse = true
 	data.buf = vim.api.nvim_win_get_buf(data.winid)
 	M.handle(data)
 end

@@ -17,8 +17,8 @@ local M = {
 				cmp_doc = true,
 				cmp_sig = true,
 			},
-			labels = { cs = 'c_sharp', csharp = 'c_sharp' },
-			ft = true,
+			labels = { cs = 'c_sharp' },
+			ft = true, -- TODO: set to formatters → export fmt fn per lang all in table
 			debug = false,
 		},
 	},
@@ -53,16 +53,23 @@ function M.defaults.overrides.convert(doc, contents)
 	end
 
 	local ft = vim.bo.filetype
-	if str:sub(1, 3) == '```' and str:sub(-4) == '\n```' then -- file preview
-		local from, to, label = str:find('^(%w*)\n', 4)
+	if -- file preview (guess)
+		str:sub(1, 3) == '```'
+		and str:sub(-4) == '\n```'
+		and str:sub(4, 7) ~= ' man'
+		and ({ str:find '\n```' })[2] == #str
+	then
+		local from, to, label = str:find('^(.-)\n', 4)
 		if str:find('^﻿', to + 1) then -- windows files cmp preview bug
 			str = '```' .. (M.config.labels[label] or label) .. '\n' .. str:sub(to + 4)
 		else
 			label = M.config.labels[label]
 			if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
 		end
-		return vim.split(str, '\n')
-	elseif M.config.ft == true or M.config.ft[ft] == true then
+		local ret = vim.split(str, '\n')
+		if #ret > 3 then return ret end -- filter oneline code docs
+	end
+	if M.config.ft == true or M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
 			local has
 			if M.config.debug:sub(1, 1) == '"' then
@@ -177,21 +184,23 @@ function set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end
 function set.stylize(fn) vim.lsp.util.stylize_markdown = fn end
 function set.convert_sig(fn) vim.lsp.util.convert_signature_help_to_markdown_lines = fn end
 
-local function onLoad(pkg, cb)
-	if package.loaded[pkg] then
-		cb(package.loaded[pkg])
-	else
-		package.preload[pkg] = function()
-			package.preload[pkg] = nil
+local function onLoad(mod, cb)
+	if package.loaded[mod] then return cb(package.loaded[mod]) end
+	local old = package.preload[mod]
+	package.preload[mod] = function()
+		package.preload[mod] = nil
+		if old then
+			old()
+		else
 			for _, loader in pairs(package.loaders) do
-				local ret = loader(pkg)
+				local ret = loader(mod)
 				if type(ret) == 'function' then
-					local mod = ret()
-					cb(mod)
-					return mod
+					package.loaded[mod] = ret()
+					break
 				end
 			end
 		end
+		cb(package.loaded[mod])
 	end
 end
 

@@ -192,7 +192,9 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						       ('A' <= *doc && *doc <= 'Z') || ('0' <= *doc && *doc <= '9'))
 							*fmt++ = *doc++; // arg name
 						if (*doc == ':') { // arg type
-							*fmt++ = *doc++;
+							doc++;
+							*fmt++ = ' ';
+							*fmt++ = '=';
 							type_fmt(&doc, &fmt);
 							while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
 							if (alike(doc, "___")) {
@@ -472,21 +474,21 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 
 char *lua_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
-	char *fmt0       = fmt; // for checking beginning of output
-	if (alike(doc, "```lua\n") > 0) {
-		fmt = append(fmt, "```lua\n");
-		doc += 7;
-		if (*doc == '(') {
-			if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
-			doc += 5;                                    // (field)
-			while (*doc > ' ') doc++;
-		}
-		code_fmt(&doc, &fmt, "```");
-		doc += 3;
-		while (*--fmt <= ' ') {}
-		fmt = append(fmt + 1, "```\n\n");
-		if (doc >= docEnd) return fmt - 1;
-	} else doc--;
+	const char *fmt0 = fmt; // for checking beginning of output
+	fmt              = append(fmt, "```lua\n");
+	doc += 7;
+	if (*doc == '(') {
+		if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
+		doc += 5;
+		while (*++doc != ' ') {}
+		doc++;
+	}
+	code_fmt(&doc, &fmt, "```");
+	doc += 3;
+	while (*--fmt <= ' ') {}
+	fmt = append(fmt + 1, "```\n\n");
+
+	if (doc >= docEnd) return fmt - 1;
 	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
 	char kind    = 0;
 	while (++doc < docEnd) {

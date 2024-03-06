@@ -1,24 +1,30 @@
 local M = {
 	defaults = {
-		sorting = { order = 1, matcher = -3, offset = 1, length = 1 },
+		filter = {
+			tolerance = { startPost = math.huge, endPre = 1 },
+			sorting = { order = 1, matcher = 3, offset = 1, length = 1 },
+		},
 	},
 }
-function M.setColToStart(event, match) return event.column < match.from and match.from - 1 end
 M.defaults.mappings = {
-	{ { 'n', 'i' }, '<A-a>', { action = 'inc', noFromCheck = true, setCol = M.setColToStart } },
-	{ { 'n', 'i' }, '<A-A>', { action = 'dec', noFromCheck = true, setCol = M.setColToStart } },
-	{ { 'n', 'i' }, '<A-C-a>', { action = 'tgl' } },
+	{ { 'n', 'i' }, '<A-a>', { action = 'inc', setCol = 'closer' } },
+	{ { 'n', 'i' }, '<A-A>', { action = 'dec', setCol = 'closer' } },
+	{
+		{ 'n', 'i' },
+		'<A-C-a>',
+		{ action = 'tgl', filter = { tolerance = { startPost = 0, endPre = 0 } } },
+	},
 }
 
-function M.replace(match, event, with)
-	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
+function M.replace(match, ev, with)
+	local line = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line, true)[1]
 	line = line:sub(1, match.from - 1) .. with .. line:sub(match.to + 1)
-	vim.api.nvim_buf_set_lines(event.buf, event.line - 1, event.line, true, { line })
+	vim.api.nvim_buf_set_lines(ev.buf, ev.line - 1, ev.line, true, { line })
 end
 function M.genSeqHandler(seq, matcher)
 	if not matcher then matcher = {} end
 	matcher.use = function(val, match, ev)
-		local dir = ev.opts.action == 'dec' and -1 or (ev.opts.action == 'inc' and 1 or #seq / 2)
+		local dir = ev.action == 'dec' and -1 or (ev.action == 'inc' and 1 or #seq / 2)
 		M.replace(match, ev, seq[(seq[match[1]] - 1 + dir) % #seq + 1])
 	end
 
@@ -28,10 +34,11 @@ function M.genSeqHandler(seq, matcher)
 		end
 	else
 		local pat = {}
+		local escape = '^]%-'
 		if #seq[1] == 1 then
 			for i, v in ipairs(seq) do
 				seq[v] = i
-				pat[i] = (v == ']' or v == '%') and '%' .. v or v
+				pat[i] = escape:find(v, 0, true) and '%' .. v or v
 			end
 			matcher.luapat = '([' .. table.concat(pat, '') .. '])'
 		else
@@ -51,11 +58,11 @@ M.matchers = {
 	bool = {
 		vimre = [[\<\([Tt]rue\|[Ff]alse\)\>]],
 		weight = 5,
-		use = function(val, match, event)
+		use = function(val, match, ev)
 			if match[1]:byte(2) == 114 then
-				M.replace(match, event, val:byte() == 84 and 'False' or 'false')
+				M.replace(match, ev, val:byte() == 84 and 'False' or 'false')
 			else
-				M.replace(match, event, val:byte() == 70 and 'True' or 'true')
+				M.replace(match, ev, val:byte() == 70 and 'True' or 'true')
 			end
 		end,
 	},
@@ -63,35 +70,35 @@ M.matchers = {
 	int = {
 		vimre = [[-\?\d\+]],
 		weight = 10,
-		use = function(val, match, event)
+		use = function(val, match, ev)
 			local num = tonumber(val)
-			if event.opts.action == 'tgl' then
-				M.replace(match, event, tostring(-num))
+			if ev.action == 'tgl' then
+				M.replace(match, ev, tostring(-num))
 			else
-				M.replace(match, event, tostring(num + (event.opts.action == 'inc' and 1 or -1)))
+				M.replace(match, ev, tostring(num + (ev.action == 'inc' and 1 or -1)))
 			end
 		end,
 	},
 	logic = {
-		vimre = [[[&|]\+\|\<and\>\|\<or\>]], -- TODO: full line negation - [~!]= → ==; && → ||...
-		use = function(val, match, event)
+		vimre = [[[&|]\+\|\<and\>\|\<or\>]],
+		use = function(val, match, ev)
 			if val:sub(1, 1) == '&' or val:sub(1, 1) == '|' then
-				if vim.bo[event.buf] == 'lua' then return false end
-				M.replace(match, event, (val:sub(1, 1) == '|' and { '&', '&&' } or { '|', '||' })[#val])
+				if vim.bo[ev.buf].ft == 'lua' then return false end
+				M.replace(match, ev, (val:sub(1, 1) == '|' and { '&', '&&' } or { '|', '||' })[#val])
 			else
-				if vim.bo[event.buf] ~= 'lua' then return false end
-				M.replace(match, event, val == 'or' and 'and' or 'or')
+				if vim.bo[ev.buf].ft ~= 'lua' then return false end
+				M.replace(match, ev, val == 'or' and 'and' or 'or')
 			end
 		end,
 	},
 	sign = M.genSeqHandler { '<', '=', '+', '*', '^', '>', '!', '-', '/', '%' },
 	state = {
 		vimre = [[\<\(enabled\?\|disabled\?\)\>]],
-		use = function(_, match, event)
+		use = function(_, match, ev)
 			if match[1]:byte() == 101 then
-				M.replace(match, event, match[1]:byte(-1) == 100 and 'disabled' or 'disable')
+				M.replace(match, ev, match[1]:byte(-1) == 100 and 'disabled' or 'disable')
 			else
-				M.replace(match, event, match[1]:byte(-1) == 100 and 'enabled' or 'enable')
+				M.replace(match, ev, match[1]:byte(-1) == 100 and 'enabled' or 'enable')
 			end
 		end,
 	},
@@ -100,15 +107,18 @@ M.matchers = {
 M.defaults.matchers = { 'int', 'direction', 'bool', 'logic', 'state', 'toggle', 'answer', 'sign' }
 
 function M.handle(ev)
-	if not ev.opts then ev.opts = {} end
-	if require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.sorting) then
-		return
+	local match = require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.filter)
+	if not match then return vim.notify 'No toggleable found' end
+	if ev.setCol and (match.from > ev.column or match.to < ev.column) then
+		local col = ev.setCol == 'end' and match.to or match.from
+		if ev.setCol == 'closer' and match.to < ev.column then col = match.to end
+		vim.api.nvim_win_set_cursor(0, { ev.line, col - 1 })
 	end
-	vim.notify 'No toggleable found'
+	return match
 end
 
-function M.genBind(evOpts)
-	local ev = { buf = 0, opts = evOpts or {} }
+function M.genBind(ev)
+	ev.buf = 0
 	return function()
 		local pos = vim.api.nvim_win_get_cursor(0)
 		ev.line = pos[1]
