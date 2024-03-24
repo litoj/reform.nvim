@@ -57,7 +57,7 @@ M.matchers = {
 	answer = M.genSeqHandler { 'yes', 'no' },
 	bool = {
 		vimre = [[\<\([Tt]rue\|[Ff]alse\)\>]],
-		weight = 5,
+		group = 3,
 		use = function(val, match, ev)
 			if match[1]:byte(2) == 114 then
 				M.replace(match, ev, val:byte() == 84 and 'False' or 'false')
@@ -69,7 +69,7 @@ M.matchers = {
 	direction = M.genSeqHandler { 'up', 'north', 'east', 'down', 'south', 'west' },
 	int = {
 		vimre = [[-\?\d\+]],
-		weight = 10,
+		group = 1,
 		use = function(val, match, ev)
 			local num = tonumber(val)
 			if ev.action == 'tgl' then
@@ -115,6 +115,32 @@ function M.handle(ev)
 		vim.api.nvim_win_set_cursor(0, { ev.line, col - 1 })
 	end
 	return match
+end
+
+--- Generate a function that applies given substitution generator to the current line
+---@param matcher {luapat?:string,vimre?:string,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):string|false} generates the replacement string
+---@return fun() returns generated function that applies the matcher
+function M.genSubApplicator(matcher)
+	local substitutor = matcher.use
+	local sub
+	matcher.use = function(val, match, ev)
+		sub = substitutor(val, match, ev)
+		if sub then
+			M.replace(match, ev, sub)
+		else
+			return false
+		end
+	end
+	local ev = { buf = 0, filter = { tolerance = { endPre = 1 } } }
+	return function()
+		local pos = vim.api.nvim_win_get_cursor(0)
+		ev.line = pos[1]
+		ev.column = pos[2] + 1
+		local match = require('reform.util').findMatch(ev, { matcher }, {}, {})
+		if match and match.from < ev.column then
+			vim.api.nvim_win_set_cursor(0, { ev.line, match.from + #sub - 1 })
+		end
+	end
 end
 
 function M.genBind(ev)

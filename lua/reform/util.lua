@@ -79,7 +79,7 @@ function M.findMatch(event, matchers, default, filter)
 				+ (
 					(match.from <= column and match.to >= column) and -1000
 					or (
-						sorting.matcher * (matcher.group or 0)
+						sorting.matcher * (matcher.group or 10)
 						+ sorting.offset * math.abs(match.from - column)
 						+ sorting.length * #match[1]
 					)
@@ -106,7 +106,6 @@ function M.findMatch(event, matchers, default, filter)
 		end
 	end
 
-	if not sorter then return false end
 	table.sort(order, function(a, b) return a[1] < b[1] end)
 	if M.debug then
 		local data = {}
