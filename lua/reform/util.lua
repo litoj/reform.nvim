@@ -7,6 +7,10 @@ local M = {
 		relative = 'cursor',
 		border = 'rounded',
 	},
+	filter = {
+		tolerance = { startPost = 0, startPre = math.huge, endPost = math.huge, endPre = 0 },
+		sorting = { order = 1, matcher = 0, offset = 1, length = 0 },
+	},
 	debug = false,
 }
 function M.mkWin(buf, opts, prompt)
@@ -40,10 +44,7 @@ function M.mkWin(buf, opts, prompt)
 end
 
 function M.findMatch(event, matchers, default, filter)
-	filter = vim.tbl_deep_extend('force', {
-		tolerance = { startPost = 0, startPre = math.huge, endPost = math.huge, endPre = 0 },
-		sorting = { order = 1, matcher = 0, offset = 1, length = 0 },
-	}, filter, event.filter or {})
+	filter = vim.tbl_deep_extend('force', M.filter, filter, event.filter or {})
 	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
 	local column = event.column
 
@@ -72,8 +73,8 @@ function M.findMatch(event, matchers, default, filter)
 	end
 
 	local sorter = filter.sorting
-	if type(sorter) ~= 'function' then
-		local sorting = filter.sorting
+	if type(sorter) == 'table' then
+		local sorting = sorter
 		sorter = function(order, matcher, match)
 			return sorting.order * order
 				+ (
@@ -119,6 +120,15 @@ function M.findMatch(event, matchers, default, filter)
 	end
 
 	return false -- no successful matcher found
+end
+
+function M.applyMatcher(matcher, ev)
+	ev = ev or {}
+	local pos = vim.api.nvim_win_get_cursor(0)
+	ev.line = pos[1]
+	ev.column = pos[2] + 1
+	ev.buf = 0
+	return M.findMatch(ev, { matcher }, {}, {})
 end
 
 return M

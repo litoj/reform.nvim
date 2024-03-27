@@ -150,14 +150,16 @@ function M.defaults.overrides.convert_sig(sig, ft, _)
 
 	if p then -- determine the active parameter position after conversion
 		local s = ret[2]:find '___'
-		ret[2] = ret[2]:gsub('___', '', 1)
-		local e = ret[2]:find '___'
-		if not e then
-			_, e = ret[2]:find('^[%w_]+%W', s)
-		else
+		if s then
 			ret[2] = ret[2]:gsub('___', '', 1)
+			local e = ret[2]:find '___'
+			if not e then
+				_, e = ret[2]:find('^[%w_]+%W', s)
+			else
+				ret[2] = ret[2]:gsub('___', '', 1)
+			end
+			return ret, { s - 1, e - 1 }
 		end
-		return ret, { s - 1, e - 1 }
 	end
 
 	return ret

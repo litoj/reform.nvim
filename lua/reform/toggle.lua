@@ -118,7 +118,7 @@ function M.handle(ev)
 end
 
 --- Generate a function that applies given substitution generator to the current line
----@param matcher {luapat?:string,vimre?:string,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):string|false} generates the replacement string
+---@param matcher {luapat?:string,vimre?:string,(use:fun(val:string,match:reform.util.Match,ev:reform.util.Event):string|false),setCursor?:false|fun(match:reform.util.Match,col:integer):integer|false} generates the replacement string
 ---@return fun() returns generated function that applies the matcher
 function M.genSubApplicator(matcher)
 	local substitutor = matcher.use
@@ -131,15 +131,17 @@ function M.genSubApplicator(matcher)
 			return false
 		end
 	end
-	local ev = { buf = 0, filter = { tolerance = { endPre = 1 } } }
-	return function()
-		local pos = vim.api.nvim_win_get_cursor(0)
-		ev.line = pos[1]
-		ev.column = pos[2] + 1
-		local match = require('reform.util').findMatch(ev, { matcher }, {}, {})
-		if match and match.from < ev.column then
-			vim.api.nvim_win_set_cursor(0, { ev.line, match.from + #sub - 1 })
+	if matcher.setCursor == false then
+		matcher.setCursor = function() return false end
+	elseif matcher.setCursor == nil then
+		matcher.setCursor = function(match, col)
+			return match and match.from <= col and (match.from + #sub - 1)
 		end
+	end
+	local ev = { filter = { tolerance = { endPre = 1 } } }
+	return function()
+		local set = matcher.setCursor(require('reform.util').applyMatcher(matcher, ev), ev.column)
+		if set then vim.api.nvim_win_set_cursor(0, { ev.line, set }) end
 	end
 end
 

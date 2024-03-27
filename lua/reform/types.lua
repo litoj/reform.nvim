@@ -10,8 +10,10 @@
 ---@alias reform.util.MatcherList reform.util.MatcherRefs|fun(event:reform.util.Event):reform.util.MatcherRefs regex & matched text handler pairs or reference to predefined matchers
 ---@class reform.util
 ---@field winConfig reform.util.WinConfig default window configuration
+---@field filter reform.util.MatchFilter default findMatch filter/settings - tolerance + sorting
 ---@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
 ---@field findMatch fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
+---@field applyMatcher fun(matcher:reform.util.Matcher,event:reform.util.Event):reform.util.Match|false
 
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
 
