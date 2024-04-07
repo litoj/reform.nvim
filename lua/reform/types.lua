@@ -2,7 +2,7 @@
 ---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
 ---@class reform.util.MatchFilter
 ---@field tolerance? {startPost:integer,startPre:integer,endPost:integer,endPre:integer} startPost=if match starts after cursor, how far after (post-cursor) it can start...
----@field sorting? {order:integer,matcher:integer,offset:integer,length:integer}|fun(order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer|false
+---@field sorting? {order:integer,matcher:integer,offset:integer,length:integer}|fun(ev:reform.util.Event,order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer|false
 ---@alias reform.util.Event {buf:integer,line:integer,column:integer,filter?:reform.util.MatchFilter}
 ---@alias reform.util.Matcher {luapat?:string,vimre?:string,group?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure, group= lower → higher priority
 ---@alias reform.util.MatcherMap table<string,reform.util.Matcher>
@@ -13,7 +13,7 @@
 ---@field filter reform.util.MatchFilter default findMatch filter/settings - tolerance + sorting
 ---@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
 ---@field findMatch fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
----@field applyMatcher fun(matcher:reform.util.Matcher,event:reform.util.Event):reform.util.Match|false
+---@field applyMatcher fun(matcher:reform.util.Matcher,event?:reform.util.Event):reform.util.Match|false
 
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
 

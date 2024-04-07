@@ -13,7 +13,12 @@ M.matchers = {
 	},
 	any_url = {
 		luapat = '(https?://[%w/#!.:&?=+_%-%%]+)',
-		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
+		use = function(url, match, ev)
+			if vim.o.columns == match.to then
+				url = url .. vim.api.nvim_buf_get_lines(ev.buf, ev.line, ev.line + 1, true)[1]:match '^%S+'
+			end
+			vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true })
+		end,
 	},
 	markdown_file_uri = {
 		luapat = '%[.-%]%(file://([^)]+)%)',

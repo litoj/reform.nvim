@@ -75,13 +75,13 @@ function M.findMatch(event, matchers, default, filter)
 	local sorter = filter.sorting
 	if type(sorter) == 'table' then
 		local sorting = sorter
-		sorter = function(order, matcher, match)
+		sorter = function(ev, order, matcher, match)
 			return sorting.order * order
 				+ (
-					(match.from <= column and match.to >= column) and -1000
+					(match.from <= ev.column and match.to >= ev.column) and -1000
 					or (
 						sorting.matcher * (matcher.group or 10)
-						+ sorting.offset * math.abs(match.from - column)
+						+ sorting.offset * math.abs(match.from - ev.column)
 						+ sorting.length * #match[1]
 					)
 				)
@@ -102,7 +102,7 @@ function M.findMatch(event, matchers, default, filter)
 				math.abs(from - column) <= ((from <= column) and startPre or startPost)
 				and math.abs(to - column) <= ((to >= column) and endPost or endPre)
 			then
-				order[#order + 1] = { sorter(i, matcher, match), matcher, match }
+				order[#order + 1] = { sorter(event, i, matcher, match), matcher, match }
 			end
 		end
 	end
@@ -125,8 +125,14 @@ end
 function M.applyMatcher(matcher, ev)
 	ev = ev or {}
 	local pos = vim.api.nvim_win_get_cursor(0)
-	ev.line = pos[1]
-	ev.column = pos[2] + 1
+	if not ev.line or ev.autoLine then
+		ev.line = pos[1]
+		ev.autoLine = true
+	end
+	if not ev.column or ev.autoColumn then
+		ev.column = pos[2] + 1
+		ev.autoColumn = true
+	end
 	ev.buf = 0
 	return M.findMatch(ev, { matcher }, {}, {})
 end

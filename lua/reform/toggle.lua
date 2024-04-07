@@ -122,27 +122,20 @@ end
 ---@return fun() returns generated function that applies the matcher
 function M.genSubApplicator(matcher)
 	local substitutor = matcher.use
-	local sub
 	matcher.use = function(val, match, ev)
-		sub = substitutor(val, match, ev)
-		if sub then
-			M.replace(match, ev, sub)
-		else
-			return false
+		local sub = substitutor(val, match, ev)
+		if not sub then return false end
+		M.replace(match, ev, sub)
+		local pos = false
+		if matcher.setCursor == nil then
+			pos = match and match.from <= ev.column and (match.from + #sub - 1)
+		elseif matcher.serCursor then
+			pos = matcher.setCursor(match, ev.column)
 		end
-	end
-	if matcher.setCursor == false then
-		matcher.setCursor = function() return false end
-	elseif matcher.setCursor == nil then
-		matcher.setCursor = function(match, col)
-			return match and match.from <= col and (match.from + #sub - 1)
-		end
+		if pos then vim.api.nvim_win_set_cursor(0, { ev.line, pos }) end
 	end
 	local ev = { filter = { tolerance = { endPre = 1 } } }
-	return function()
-		local set = matcher.setCursor(require('reform.util').applyMatcher(matcher, ev), ev.column)
-		if set then vim.api.nvim_win_set_cursor(0, { ev.line, set }) end
-	end
+	return function() require('reform.util').applyMatcher(matcher, ev) end
 end
 
 function M.genBind(ev)
