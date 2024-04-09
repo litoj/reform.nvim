@@ -56,8 +56,8 @@ function M.defaults.overrides.convert(doc, contents)
 	if -- file preview (guess)
 		str:sub(1, 3) == '```'
 		and str:sub(-4) == '\n```'
-		and str:sub(4, 7) ~= ' man'
-		and ({ str:find '\n```' })[2] == #str
+		and #str >= 2048 -- expect docs to not be too long
+		and str:sub(4, 7) ~= ' man' -- bash manpage can be very long
 	then
 		local from, to, label = str:find('^(.-)\n', 4)
 		if str:find('^﻿', to + 1) then -- windows files cmp preview bug

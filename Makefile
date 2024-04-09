@@ -1,4 +1,4 @@
-DIR = ./src/
+DIR = ./formatter/
 
 formatter:
 	cd $(DIR) && make all
