@@ -22,14 +22,15 @@ static struct pair {
 	const char *label;
 } fmts[] = {
   p(lua),
-  {"cpp", cpp_fmt, NULL},
-  {"c", cpp_fmt, NULL},
+  {"cpp", cpp_fmt, ""},
+  {"c", cpp_fmt, ""},
   {"cs", csharp_fmt, "csharp\n"},
   p(java),
   {"bash", bash_fmt, " man\n"},
   {"sh", bash_fmt, " man\n"},
   {"javascript", typescript_fmt, "typescript\n"},
-  p(typescript)};
+  p(typescript)
+};
 static const int fmtsN = sizeof(fmts) / sizeof(struct pair);
 
 #ifdef DEBUG
@@ -75,6 +76,11 @@ static int l_fmt(lua_State *L) {
 			if (fmts[i].label && alike(doc + 3, fmts[i].label) <= 0) continue; // filter some snippets
 			char *fmt = (char *) malloc((len + 50) * sizeof(char));
 			char *end = fmts[i].formatter(doc, fmt, len);
+
+			if (!end) { // invalid format for parser
+				free(fmt);
+				continue;
+			}
 
 			if (end > fmt)
 				while ((in) * --end <= (in) ' ') {}
@@ -124,16 +130,7 @@ static int l_fmt(lua_State *L) {
 	}
 	return 1;
 #else
-	char *fmt       = (char *) malloc(len + 1);
-	const char *end = (char *) doc + len, *ptr = fmt;
-	lua_newtable(L);
-	for (int j = 1; (char *) doc < end; j++, ptr = fmt, doc++) {
-		while (*doc != '\n' && *doc) *fmt++ = *doc++;
-		*fmt++ = '\0';
-		lua_pushstring(L, ptr);
-		lua_rawseti(L, -2, j);
-	}
-	return 1;
+	return 0;
 }
 
 int luaopen_reform_formatter(lua_State *L) {

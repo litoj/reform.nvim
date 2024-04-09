@@ -28,7 +28,7 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 			}
 			*fmt++ = '\n';
 		}
-	}
+	} else return 0;
 	doc--;
 	char kind = 0;
 	while (++doc < docEnd) {

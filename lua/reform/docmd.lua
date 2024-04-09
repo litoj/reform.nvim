@@ -30,9 +30,7 @@ function M.defaults.overrides.convert(doc, contents)
 		vim.notify('reform.docmd.convert(): ' .. vim.inspect(contents))
 	end
 	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
-	if type(doc) == 'string' or doc.kind == 'plaintext' then
-		return vim.split(doc.value or doc, '\n')
-	end
+	if type(doc) == 'string' then return vim.split(doc.value or doc, '\n') end
 	local str = doc.value
 	if doc[1] and not str then
 		str = {}
@@ -53,23 +51,14 @@ function M.defaults.overrides.convert(doc, contents)
 	end
 
 	local ft = vim.bo.filetype
-	if -- file preview (guess)
+	if -- file preview (constrained guess)
 		str:sub(1, 3) == '```'
 		and str:sub(-4) == '\n```'
 		and #str >= 2048 -- expect docs to not be too long
 		and str:sub(4, 7) ~= ' man' -- bash manpage can be very long
+		and str:find('\n```', 4, true) == #str - 3 -- no code blocks in between
 	then
-		local from, to, label = str:find('^(.-)\n', 4)
-		if str:find('^﻿', to + 1) then -- windows files cmp preview bug
-			str = '```' .. (M.config.labels[label] or label) .. '\n' .. str:sub(to + 4)
-		else
-			label = M.config.labels[label]
-			if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
-		end
-		local ret = vim.split(str, '\n')
-		if #ret > 3 then return ret end -- filter oneline code docs
-	end
-	if M.config.ft == true or M.config.ft[ft] == true then
+	elseif M.config.ft == true or type(M.config.ft) == 'table' and M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
 			local has
 			if M.config.debug:sub(1, 1) == '"' then
@@ -98,22 +87,31 @@ function M.defaults.overrides.convert(doc, contents)
 					f:close()
 				end
 			end
-			return ret
+			if ret then return ret end
 		elseif M.config.debug then
 			vim.notify(str)
 		end
-		return require 'reform.formatter'(str, ft)
+		local ret = require 'reform.formatter'(str, ft)
+		if ret then return ret end
 	elseif type(M.config.ft) == 'table' and type(M.config.ft[ft]) == 'function' then
-		M.config.ft[ft](str, ft)
+		return M.config.ft[ft](str, ft)
 	end
 
-	-- regex fallback that does some basic transformation
-	return vim.split(
-		str
-			:gsub('%s+(```\n)', '%1')
-			:gsub('([ \n\t])`([^`\n]+%s[^`\n]+)`%s*', ('%%1\n```%s\n%%2```\n'):format(ft)),
-		'\n'
-	)
+	-- no handlers for this text → consider a file preview
+	if str:sub(1, 3) ~= '```' then
+		str = str:sub(1, 3) == '﻿' and str:sub(4) or str
+		local ft = ({ ['-'] = 'yaml', ['#'] = 'bash', ['<'] = 'xml', ['{'] = 'json' })[str:sub(1, 1)]
+		if ft then str = string.format('```%s\n%s```', ft, str) end
+		return vim.split(str, '\n')
+	end
+	local _, to, label = str:find('^(.-)\n', 4)
+	if str:sub(to + 1, to + 3) == '﻿' then -- windows files cmp preview bug
+		str = '```' .. (M.config.labels[label] or label) .. '\n' .. str:sub(to + 5)
+	else
+		label = M.config.labels[label]
+		if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
+	end
+	return vim.split(str:gsub('\n```', '```'), '\n')
 end
 
 function M.defaults.overrides.stylize(buf, contents, _)
