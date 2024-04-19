@@ -14,7 +14,7 @@
 #include <stdlib.h>
 
 // clang-format off
-#define p(fmt) { #fmt, fmt##_fmt, #fmt"\n"}
+#define p(fmt) { #fmt, fmt##_fmt, "```"#fmt"\n"}
 // clang-format on
 static struct pair {
 	const char *ft;
@@ -22,13 +22,15 @@ static struct pair {
 	const char *label;
 } fmts[] = {
   p(lua),
-  {"cpp", cpp_fmt, ""},
-  {"c", cpp_fmt, ""},
-  {"cs", csharp_fmt, "csharp\n"},
+  p(cpp),
+  {"c", cpp_fmt, "```c\n"},
+  {"cpp", cpp_fmt, "### "},
+  {"c", cpp_fmt, "### "},
+  {"cs", csharp_fmt, "```csharp\n"},
   p(java),
-  {"bash", bash_fmt, " man\n"},
-  {"sh", bash_fmt, " man\n"},
-  {"javascript", typescript_fmt, "typescript\n"},
+  {"bash", bash_fmt, "``` man\n"},
+  {"sh", bash_fmt, "``` man\n"},
+  {"javascript", typescript_fmt, "```typescript\n"},
   p(typescript)
 };
 static const int fmtsN = sizeof(fmts) / sizeof(struct pair);
@@ -70,17 +72,15 @@ static int l_fmt(lua_State *L) {
 	}
 #endif
 
+	char *fmt = NULL;
 	for (int i = 0; i < fmtsN; i++) {
 		int match = alike((in *) ft, fmts[i].ft);
 		if (match > 0 && !ft[match]) {
-			if (fmts[i].label && alike(doc + 3, fmts[i].label) <= 0) continue; // filter some snippets
-			char *fmt = (char *) malloc((len + 50) * sizeof(char));
+			if (fmts[i].label && alike(doc, fmts[i].label) <= 0) continue; // filter some snippets
+			if (!fmt) fmt = (char *) malloc((len + 50) * sizeof(char));
 			char *end = fmts[i].formatter(doc, fmt, len);
 
-			if (!end) { // invalid format for parser
-				free(fmt);
-				continue;
-			}
+			if (!end) continue; // invalid format for parser
 
 			if (end > fmt)
 				while ((in) * --end <= (in) ' ') {}
@@ -122,12 +122,16 @@ static int l_fmt(lua_State *L) {
 #endif
 		}
 	}
+
+	if (fmt) free(fmt);
+
 #ifdef DEBUG
-	if (argc < 3) free(doc);
-	printf("\033[91mUnsupported filetype: %s\033[0m\nSupported ft are:\n", ft);
+	printf("\033[91mUnsupported filetype/file format: %s\033[0m\nSupported ft are:\n", ft);
 	for (int i = 0; i < fmtsN; i++) {
-		printf(" \033[32m%s\033[31m: \033[33m```%s", fmts[i].ft, fmts[i].label);
+		printf(" \033[32m%s\033[31m: \033[33m'%s'", fmts[i].ft, fmts[i].label);
 	}
+	printf("\033[0mGot: \033[32m%s\033[31m: \033[33m'\033[91m%.10s\033[33m'\033[0m...\n", ft, doc);
+	if (argc < 3 || raw) free(doc);
 	return 1;
 #else
 	return 0;

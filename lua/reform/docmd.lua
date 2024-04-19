@@ -60,24 +60,29 @@ function M.defaults.overrides.convert(doc, contents)
 	then
 	elseif M.config.ft == true or type(M.config.ft) == 'table' and M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
-			local has
+			local hasFile
 			if M.config.debug:sub(1, 1) == '"' then
 				vim.fn.setreg(M.config.debug:sub(2, 1), str)
 			else
 				local f = io.open(M.config.debug, 'a+')
-				has = f:read '*l'
+				hasFile = f:read '*l'
 				f:write(str)
 				f:close()
 			end
+
 			local ret = require 'reform.formatter'(str, ft)
+
 			if M.config.debug:sub(1, 1) == '"' then
 				if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
-					vim.fn.setreg(M.config.debug:sub(2, 2), str .. '\n\n>>>\n\n' .. table.concat(ret, '\n'))
+					vim.fn.setreg(
+						M.config.debug:sub(2, 2),
+						str .. '\n\n>>>\n\n' .. (ret and table.concat(ret, '\n') or 'nil')
+					)
 				else
-					vim.fn.setreg(M.config.debug:sub(3, 3), table.concat(ret, '\n'))
+					vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
 				end
 			else
-				if not has then
+				if not hasFile then
 					io.open(M.config.debug, 'w'):close()
 				else
 					local f = io.open(M.config.debug, 'a')
@@ -87,6 +92,7 @@ function M.defaults.overrides.convert(doc, contents)
 					f:close()
 				end
 			end
+
 			if ret then return ret end
 		elseif M.config.debug then
 			vim.notify(str)
