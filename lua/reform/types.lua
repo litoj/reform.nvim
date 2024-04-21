@@ -14,6 +14,7 @@
 ---@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
 ---@field findMatch fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
 ---@field applyMatcher fun(matcher:reform.util.Matcher,event?:reform.util.Event):reform.util.Match|false
+---@field with_mod fun(mod: string, callback:function) run callback when given module is loaded
 
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
 
@@ -106,6 +107,31 @@
 ---@field print fun(...) global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
 ---@field setup fun(config:reform.tbl_extras.Config) set your custom table diff/cut/print settings
 
+---@class reform.sig_help.Overrides
+---@field lsp_sig? reform.Overridable
+---@field lsc_on_attach? reform.Overridable
+
+---@class reform.sig_help.Config
+---@field max_line_offset? integer
+---@field max_column_offset? integer
+---@field ignore_width_above? float
+---@field valid_modes? table<string,boolean>
+---@field require_active_param? boolean
+---@field auto_show? boolean
+---@field win_config? reform.util.WinConfig
+---@field mappings? nvim.Keymap[]
+---@field overrides? reform.sig_help.Overrides
+
+---@class reform.sig_help
+---@field overrides {set:table<string,fun(reform.Overridable)>,vim:table<string,function|false>}
+---@field lsc_on_attach fun(client, buf)|false currently used lsp on_attach override function
+---@field defaults {overrides:reform.sig_help.Overrides,config:reform.sig_help.Config}
+---@field config reform.sig_help.Config
+---@field win {bufnr:integer,id:integer,from_line:integer,to_line:integer,width:integer,cul:integer,cuc:integer,close:fun(self),is_valid:fun(self):boolean,integer[]|nil}
+---@field signature {idx:integer,label:string,param_idx:integer,needs_update:fun(self, sig, content_only:boolean):boolean}
+---@field toggle fun()
+---@field setup fun(config:reform.sig_help.Config)
+
 ---@class reform.Config
 ---@field docmd? boolean|reform.docmd.Config reform of all markdown documentation/signature...
 ---@field input? reform.Overridable|reform.input.Config reform of vim.ui.input
@@ -113,6 +139,7 @@
 ---@field link? boolean|reform.link.Config reform of openable links - customizable link detection and actions
 ---@field toggle? boolean|reform.toggle.Config custom value toggler/changer system - inc/dec/tgl easily
 ---@field tbl_extras? boolean|reform.tbl_extras.Config multi-table diff, depth-cutoff, printer
+---@field sig_help? boolean|reform.sig_help.Config auto-show signature help without blinking
 
 ---@class reform
 ---@field defaults reform.Config

@@ -128,6 +128,20 @@ require'reform'.setup {
     },
     global_print = true, -- set global print() to our extension for easy table diff and depth lookup
   },
+  sig_help = true|{
+    max_line_offset = 5, -- max cursor position change before repositioning the sig_help window
+    max_column_offset = 20,
+    ignore_width_above = 0.8, -- percentage of current window width or absolute value
+    valid_modes = { i = true, s = true }, -- keep displaying the signature in these modes
+    require_active_param = false, -- display signature help for activeParameter=-1
+    auto_show = true, -- show on CursorHoldI, toggleable with sig_help.toggle() mapping
+    win_config = { border = 'rounded', close_events = {'BufLeave', 'WinScrolled'} },
+    overrides = {
+      lsp_sig = true|fun(), -- `vim.lsp.handlers['textDocument/signatureHelp]` main override
+      lsc_on_attach = true|fun(), -- lspconfig on_attach - keeps sig_help updated in attached bufs
+    },
+    mappings = { {'i', '<C-S-Space>'} },
+  },
 }
 ```
 

@@ -190,34 +190,14 @@ function set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end
 function set.stylize(fn) vim.lsp.util.stylize_markdown = fn end
 function set.convert_sig(fn) vim.lsp.util.convert_signature_help_to_markdown_lines = fn end
 
-local function onLoad(mod, cb)
-	if package.loaded[mod] then return cb(package.loaded[mod]) end
-	local old = package.preload[mod]
-	package.preload[mod] = function()
-		package.preload[mod] = nil
-		if old then
-			old()
-		else
-			for _, loader in pairs(package.loaders) do
-				local ret = loader(mod)
-				if type(ret) == 'function' then
-					package.loaded[mod] = ret()
-					break
-				end
-			end
-		end
-		cb(package.loaded[mod])
-	end
-end
-
 function set.cmp_doc(fn)
-	onLoad('cmp.entry', function(pkg)
+	require('reform.util').with_mod('cmp.entry', function(pkg)
 		M.defaults.overrides.cmp_doc = pkg.get_documentation
 		pkg.get_documentation = fn
 	end)
 end
 function set.cmp_sig(fn)
-	onLoad('cmp_nvim_lsp_signature_help', function(pkg)
+	require('reform.util').with_mod('cmp_nvim_lsp_signature_help', function(pkg)
 		M.defaults.overrides.cmp_sig = pkg._docs
 		pkg._docs = fn
 	end)
