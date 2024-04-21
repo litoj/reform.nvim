@@ -2,12 +2,13 @@
 ---@diagnostic disable-next-line: missing-fields
 local M = {
 	default = vim.ui.select,
-	config = vim.tbl_extend(
+	defaults = vim.tbl_extend(
 		'force',
 		{ col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter' },
 		require('reform.util').winConfig
 	),
 }
+M.config = M.defaults
 
 function M.override(items, opts, on_choice)
 	opts.prompt = opts.prompt and opts.prompt:gsub(': *$', '') or 'Select one of'

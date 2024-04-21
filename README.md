@@ -19,6 +19,7 @@ feel more like an IDE with a few QoL improvements (all fully customizable).
     - handler for stacktrace filepaths with cursor position supporting terminal line-wrapping
     - uri handlers, nvim plugin link handler… (see default config)
 - `vim`.`ui`.`input`/`select` as popups floating at the cursor (instead of cmdline)
+- … - see config
 
 ### Installation with [`lazy.nvim`](https://github.com/folke/lazy.nvim)
 
@@ -105,7 +106,7 @@ require'reform'.setup {
     filter = {
       sorting = { order = 1, matcher = 3, offset = 1, length = 1 }, -- multipliers; least score first
       tolerance = {startPost = inf, endPre = 1}, -- how far and in which directions from cursor is OK
-		},
+    },
     handlers = {
       'int',        -- (-)123 - increase decrease or toggle sign
       'direction',  -- up north east down south west
@@ -117,7 +118,16 @@ require'reform'.setup {
       'sign',       -- < = + * ^ > ! - / %
     },
   },
-  man = false -- custom manpage formatting (using formatter(bash))
+  tbl_extras = false|{ -- helpers for debugging table values
+    diff = {
+      expand_unique = '…', -- other tables for the field are `nil` → copy or use custom value
+    },
+    cut_depth = {
+      depth = 2, -- at which depth to stop copying tables
+      cuts = {}, -- what value should be put in cut-off places
+    },
+    global_print = true, -- set global print() to our extension for easy table diff and depth lookup
+  },
 }
 ```
 

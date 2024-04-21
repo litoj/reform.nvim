@@ -48,6 +48,7 @@
 
 ---@class reform.input
 ---@field default vim.ui.input
+---@field defaults reform.input.Config
 ---@field config reform.input.Config
 ---@field override vim.ui.input override with floating window and history navigation
 ---@field setup fun(config:reform.Overridable|reform.input.Config) customize window position/title/highlighting and history keybinds or use a custom implementation
@@ -56,6 +57,7 @@
 
 ---@class reform.select
 ---@field default vim.ui.select
+---@field defaults reform.util.WinConfig
 ---@field config reform.util.WinConfig
 ---@field override vim.ui.select override with floating window and quick-select keybinds
 ---@field setup fun(config:reform.Overridable|reform.util.WinConfig) customize window position/title/highlighting or use a custom implementation
@@ -88,12 +90,29 @@
 ---@field handle fun(ev:reform.util.Event) use setup matchers to change value at line:col
 ---@field setup fun(config:reform.link.Config) set your custom shortcuts+actions or disable the feature
 
+---@class reform.tbl_extras.Config
+---@field diff? {expand_unique?:any} other tables for the field are `nil` → copy or use custom value
+---@field cut_depth? {depth?:integer,cuts?:any} depth to cut off nested tables, replacement for cut-off tables (false to disable)
+---@field global_print? boolean set custom table printer as extension of the global one
+
+---@class reform.tbl_extras
+---@field defaults reform.tbl_extras.Config
+---@field config reform.tbl_extras.Config
+---@field tbl_diff fun(opts:{expand_unique?:any},src:table,...:table):table? create diff of table contents compared to src
+---@field tbl_short_diff fun(src:table,...:table):table? diff without unique tables expansion
+---@field tbl_full_diff fun(src:table,...:table):table? diff with unique tables expansion
+---@field tbl_cut_depth fun(tbl:table,opts?:{depth?:integer,cuts?:any}):table cut table at said depth
+---@field tbl_print fun(tbl:table) print table with guarantee of visibility to the user
+---@field print fun(...) global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
+---@field setup fun(config:reform.tbl_extras.Config) set your custom table diff/cut/print settings
+
 ---@class reform.Config
 ---@field docmd? boolean|reform.docmd.Config reform of all markdown documentation/signature...
 ---@field input? reform.Overridable|reform.input.Config reform of vim.ui.input
 ---@field select? reform.Overridable|reform.util.WinConfig reform of vim.ui.select
 ---@field link? boolean|reform.link.Config reform of openable links - customizable link detection and actions
 ---@field toggle? boolean|reform.toggle.Config custom value toggler/changer system - inc/dec/tgl easily
+---@field tbl_extras? boolean|reform.tbl_extras.Config multi-table diff, depth-cutoff, printer
 
 ---@class reform
 ---@field defaults reform.Config

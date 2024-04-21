@@ -2,7 +2,7 @@
 ---@diagnostic disable-next-line: missing-fields
 local M = {
 	default = vim.ui.input,
-	config = {
+	defaults = {
 		window = vim.tbl_extend('force', {
 			height = 1,
 			row = -3,
@@ -15,10 +15,11 @@ local M = {
 		},
 	},
 }
+M.config = M.defaults
 
 function M.override(opts, on_confirm)
 	local default = opts.default or ''
-	opts.prompt = opts.prompt and opts.prompt:gsub(': *$', '') or ''
+	opts.prompt = opts.prompt and opts.prompt:gsub(':? *$', '') or ''
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].filetype = 'ui-input'
 	local width = #opts.prompt > #default and #opts.prompt + 2 or #default
