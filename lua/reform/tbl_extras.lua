@@ -1,7 +1,12 @@
 ---@type reform.tbl_extras
 ---@diagnostic disable-next-line: missing-fields
 local M = {
-	defaults = {
+	override = {
+		vim = { print = _G.print },
+		set = { print = function(fn) _G.print = fn end },
+		reform = {},
+	},
+	default_config = {
 		diff = {
 			expand_unique = '…',
 		},
@@ -9,10 +14,10 @@ local M = {
 			depth = 2,
 			cuts = {},
 		},
-		global_print = true,
+		override = { print = true },
 	},
 }
-M.config = M.defaults
+M.config = M.default_config
 
 local function tbl_complement(opts, src, to_complement)
 	local diff = opts.diff_table or {}
@@ -80,26 +85,14 @@ function M.tbl_print(tbl)
 	vim.schedule(function() vim.notify(tbl) end)
 end
 
-local globalPrint = _G.print('', '') or _G.print
-function M.print(x, y, ...)
+--- global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
+function M.override.reform.print(x, y, ...)
 	if type(x) ~= 'table' then
-		---@diagnostic disable-next-line: redundant-return-value
-		if x == '' and y == '' then return globalPrint end -- to keep a ref the original
-		globalPrint(x, y, ...)
+		M.override.vim.print(x, y, ...)
 	elseif type(y) == 'table' then
 		M.tbl_print(M.tbl_diff({}, x, y, ...) or {})
 	elseif y == nil or type(y) == 'number' then
 		M.tbl_print(M.tbl_cut_depth(x, { depth = y }))
-	end
-end
-
-function M.setup(config)
-	if type(config) == 'table' then M.config = vim.tbl_deep_extend('force', M.config, config) end
-	if type(M.config.diff) ~= 'table' then M.config.diff = { expand_unique = M.config.diff } end
-	if M.config.global_print and config ~= false then
-		_G.print = M.print
-	else
-		_G.print = globalPrint
 	end
 end
 

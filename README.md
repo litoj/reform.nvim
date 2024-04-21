@@ -27,7 +27,7 @@ feel more like an IDE with a few QoL improvements (all fully customizable).
 return {
   'JosefLitos/reform.nvim',
   opts = {}, -- put your config here
-  event = 'VeryLazy', -- or LspAttach and `key = {your link mappings}`
+  event = 'VeryLazy', -- or LspAttach and `key = {your link mapping}`
 }
 ```
 
@@ -39,7 +39,7 @@ return {
 
 ```lua
 -- table of config options for `input` and `select`:
-local winConfig = {
+local util_win = {
   title_pos = 'center', --        ↓ title of the prompt replaces `''`
   title = {{'[', 'FloatBorder'}, {'', 'FloatTitle'}, {']', 'FloatBorder'}},
   relative = 'cursor',
@@ -62,21 +62,21 @@ require'reform'.setup {
     no_preview = {csharp = true}, -- always parse docs with these code labels
     debug = false|'', -- filename/'"io' for input+output save to register(s) or true to print src
   },
-  input = true|fun()|{ -- vim.ui.input (used in vim.lsp.buf.rename)
-    window = { height = 1, row = -3}+winConfig,
-    keymaps = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
+  ui = true|{ -- vim.ui.input (used in vim.lsp.buf.rename)
+    win = {
+      input = { height = 1, row = -3}+util_win,
+      select = { col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'}+util_win,
+    },
+    input_mapping = { -- keybinds are replaced per action -> cancel={'<C-q>'} removes <Esc>
       cancel = { '<Esc>', '<C-q>' },
       confirm = { '<CR>' },
       histPrev = { '<Up>', '<A-k>' },
       histNext = { '<Down>', '<A-j>' },
     },
   },
-  select = true|fun()|{ -- vim.ui.select (used in vim.lsp.buf.code_action)
-    col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter'
-  }+winConfig,
   link = true|{ -- under-cursor-regex matcher with configurable actions
-    mappings = { -- keymappings to open uri links (clicked or under cursor)
-      {{'', 'i'}, '<C-LeftMouse>'}, -- maps to link.mouse()
+    mapping = { -- keymapping to open uri links (clicked or under cursor)
+      {{'', 'i'}, '<C-LeftMouse>'}, -- maps to link.mouse(), or manually: mouse=…
       {'n', 'gL'},                  -- maps to link.key()
     },
     handlers = { -- return false for failure → try other handlers if matched handler failed
@@ -98,9 +98,9 @@ require'reform'.setup {
       -- generates links to referenced line in the 'default'/'current'/provided branch
   },
   toggle = true|{ -- quick toggle/change of values under cursor - uses same system as `link`
-    mappings = { -- if cursor outside match, move cursor to its start
+    mapping = { -- if cursor outside match, move cursor to its start
       {{'n', 'i'}, '<A-a>', {action = 'inc', setCol = 'closer'}, -- closer/start/end of match
-      {{'n', 'i'}, '<A-A>', {action = 'dec', setCol = 'closer'},
+      {{'n', 'i'}, '<A-A>', {action = 'dec', setCol = 'closer'}, -- or dec=…nvim.Keymap[]
       {{'n', 'i'}, '<A-C-a>', {action = 'tgl', filter={tolerance={startPost=0,endPre=0}}},
     },
     filter = {
@@ -126,7 +126,8 @@ require'reform'.setup {
       depth = 2, -- at which depth to stop copying tables
       cuts = {}, -- what value should be put in cut-off places
     },
-    global_print = true, -- set global print() to our extension for easy table diff and depth lookup
+    -- set global print() to our extension for easy table diff and depth lookup
+    override = {print = true},
   },
   sig_help = true|{
     max_line_offset = 5, -- max cursor position change before repositioning the sig_help window
@@ -136,11 +137,11 @@ require'reform'.setup {
     require_active_param = false, -- display signature help for activeParameter=-1
     auto_show = true, -- show on CursorHoldI, toggleable with sig_help.toggle() mapping
     win_config = { border = 'rounded', close_events = {'BufLeave', 'WinScrolled'} },
-    overrides = {
+    override = {
       lsp_sig = true|fun(), -- `vim.lsp.handlers['textDocument/signatureHelp]` main override
       lsc_on_attach = true|fun(), -- lspconfig on_attach - keeps sig_help updated in attached bufs
     },
-    mappings = { {'i', '<C-S-Space>'} },
+    mapping = { (toggle=) {'i', '<C-S-Space>'} },
   },
 }
 ```

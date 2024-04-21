@@ -1,20 +1,23 @@
+---@type reform.toggle
+---@diagnostic disable-next-line: missing-fields
 local M = {
-	defaults = {
+	default_config = {
 		filter = {
 			tolerance = { startPost = math.huge, endPre = 1 },
 			sorting = { order = 1, matcher = 3, offset = 1, length = 1 },
 		},
 	},
 }
-M.defaults.mappings = {
-	{ { 'n', 'i' }, '<A-a>', { action = 'inc', setCol = 'closer' } },
-	{ { 'n', 'i' }, '<A-A>', { action = 'dec', setCol = 'closer' } },
+M.default_config.mapping = {
+	inc = { { 'n', 'i' }, '<A-a>', { setCol = 'closer' } },
+	dec = { { 'n', 'i' }, '<A-A>', { setCol = 'closer' } },
 	{
 		{ 'n', 'i' },
 		'<A-C-a>',
 		{ action = 'tgl', filter = { tolerance = { startPost = 0, endPre = 0 } } },
 	},
 }
+M.config = M.default_config
 
 function M.replace(match, ev, with)
 	local line = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line, true)[1]
@@ -104,7 +107,8 @@ M.matchers = {
 	},
 	toggle = M.genSeqHandler { 'on', 'off' },
 }
-M.defaults.matchers = { 'int', 'direction', 'bool', 'logic', 'state', 'toggle', 'answer', 'sign' }
+M.default_config.matchers =
+	{ 'int', 'direction', 'bool', 'logic', 'state', 'toggle', 'answer', 'sign' }
 
 function M.handle(ev)
 	local match = require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.filter)
@@ -138,21 +142,15 @@ function M.genSubApplicator(matcher)
 	return function() require('reform.util').applyMatcher(matcher, ev) end
 end
 
-function M.genBind(ev)
+function M.gen_mapping(bind, action)
+	local ev = bind[3]
 	ev.buf = 0
+	ev.action = action or ev.action
 	return function()
 		local pos = vim.api.nvim_win_get_cursor(0)
 		ev.line = pos[1]
 		ev.column = pos[2] + 1
 		M.handle(ev)
-	end
-end
-
-M.config = M.defaults
-function M.setup(config)
-	M.config = config == true and M.defaults or vim.tbl_deep_extend('force', M.config, config)
-	for _, bind in ipairs(M.config.mappings) do
-		vim.keymap.set(bind[1], bind[2], M.genBind(bind[3]))
 	end
 end
 

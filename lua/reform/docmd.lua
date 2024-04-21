@@ -2,30 +2,31 @@
 ---@type reform.docmd
 ---@diagnostic disable-next-line: missing-fields
 local M = {
-	defaults = {
+	override = {
+		set = {},
 		vim = {
 			convert = vim.lsp.util.convert_input_to_markdown_lines,
 			stylize = vim.lsp.util.stylize_markdown,
 			convert_sig = vim.lsp.util.convert_signature_help_to_markdown_lines,
 		},
-		overrides = {},
-		config = {
-			overrides = {
-				convert = true,
-				stylize = true,
-				convert_sig = true,
-				cmp_doc = true,
-				cmp_sig = true,
-			},
-			labels = { cs = 'c_sharp' },
-			ft = true, -- TODO: set to formatters → export fmt fn per lang all in table
-			debug = false,
+		reform = {},
+	},
+	default_config = {
+		override = {
+			convert = true,
+			stylize = true,
+			convert_sig = true,
+			cmp_doc = true,
+			cmp_sig = true,
 		},
+		labels = { cs = 'c_sharp' },
+		ft = true, -- TODO: set to formatters → export fmt fn per lang all in table
+		debug = false,
 	},
 }
-M.config = M.defaults.config
+M.config = M.default_config
 
-function M.defaults.overrides.convert(doc, contents)
+function M.override.reform.convert(doc, contents)
 	if contents and #contents > 0 and M.config.debug then
 		vim.notify('reform.docmd.convert(): ' .. vim.inspect(contents))
 	end
@@ -106,7 +107,7 @@ function M.defaults.overrides.convert(doc, contents)
 	-- no handlers for this text → consider a file preview
 	if str:sub(1, 3) ~= '```' then
 		str = str:sub(1, 3) == '﻿' and str:sub(4) or str
-		local ft = ({ ['-'] = 'yaml', ['#'] = 'bash', ['<'] = 'xml', ['{'] = 'json' })[str:sub(1, 1)]
+		ft = ({ ['-'] = 'yaml', ['#'] = 'bash', ['<'] = 'xml', ['{'] = 'json' })[str:sub(1, 1)]
 		if ft then str = string.format('```%s\n%s```', ft, str) end
 		return vim.split(str, '\n')
 	end
@@ -120,13 +121,13 @@ function M.defaults.overrides.convert(doc, contents)
 	return vim.split(str:gsub('\n```', '```'), '\n')
 end
 
-function M.defaults.overrides.stylize(buf, contents, _)
+function M.default_config.override.stylize(buf, contents, _)
 	vim.bo[buf].ft = 'markdown'
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, contents)
 	return contents
 end
 
-function M.defaults.overrides.convert_sig(sig, ft, _)
+function M.default_config.override.convert_sig(sig, ft, _)
 	local p = sig.activeParameter
 	-- intentionaly not testing activeSignature range for finding bad lsps
 	sig = sig.signatures[(sig.activeSignature or 0) + 1]
@@ -169,14 +170,15 @@ function M.defaults.overrides.convert_sig(sig, ft, _)
 	return ret
 end
 
-function M.defaults.overrides.cmp_doc(self)
+function M.override.reform.cmp_doc(self)
 	local item = self:get_completion_item()
 	if not item.documentation then return {} end
 	return vim.lsp.util.convert_input_to_markdown_lines(item.documentation)
 end
 
-function M.defaults.overrides.cmp_sig(self, sig, idx)
+function M.default_config.override.cmp_sig(self, sig, idx)
 	local docs = {}
+---@diagnostic disable-next-line: undefined-field
 	if sig.label then docs[1] = ('```\n%s```'):format(self:_signature_label(sig, idx)) end
 	local p = sig.parameters[idx]
 	if p and p.documentation then docs[#docs + 1] = p.documentation.value or p.documentation end
@@ -185,45 +187,21 @@ function M.defaults.overrides.cmp_sig(self, sig, idx)
 	return { kind = 'markdown', value = table.concat(docs, '\n\n') }
 end
 
-local set = {}
-function set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end
-function set.stylize(fn) vim.lsp.util.stylize_markdown = fn end
-function set.convert_sig(fn) vim.lsp.util.convert_signature_help_to_markdown_lines = fn end
+function M.override.set.convert(fn) vim.lsp.util.convert_input_to_markdown_lines = fn end
+function M.override.set.stylize(fn) vim.lsp.util.stylize_markdown = fn end
+function M.override.set.convert_sig(fn) vim.lsp.util.convert_signature_help_to_markdown_lines = fn end
 
-function set.cmp_doc(fn)
+function M.override.set.cmp_doc(fn)
 	require('reform.util').with_mod('cmp.entry', function(pkg)
-		M.defaults.overrides.cmp_doc = pkg.get_documentation
+		M.default_config.override.cmp_doc = pkg.get_documentation
 		pkg.get_documentation = fn
 	end)
 end
-function set.cmp_sig(fn)
+function M.override.set.cmp_sig(fn)
 	require('reform.util').with_mod('cmp_nvim_lsp_signature_help', function(pkg)
-		M.defaults.overrides.cmp_sig = pkg._docs
+		M.default_config.override.cmp_sig = pkg._docs
 		pkg._docs = fn
 	end)
-end
-
-function M.setup(config)
-	if type(config) == 'boolean' then
-		if config then
-			config = M.defaults.config
-		else
-			config = {}
-			for k, _ in pairs(M.defaults.config.overrides) do
-				config[k] = false
-			end
-			config = { overrides = config }
-		end
-	end
-
-	M.config = vim.tbl_deep_extend('force', M.config, config)
-	for k, v in pairs(M.config.overrides) do
-		if v then
-			set[k](type(v) == 'function' and v or M.defaults.overrides[k])
-		else
-			set[k](M.defaults.vim[k])
-		end
-	end
 end
 
 return M

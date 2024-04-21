@@ -1,32 +1,30 @@
 ---@type reform.sig_help
 ---@diagnostic disable-next-line: missing-fields
 local M = {
-	overrides = {
+	override = {
 		set = {},
 		vim = {
 			lsp_sig = vim.lsp.handlers['textDocument/signatureHelp'],
 			lsc_on_attach = false,
 		},
+		reform = {},
 	},
-	defaults = {
-		overrides = {},
-		config = {
-			max_line_offset = 5,
-			max_column_offset = 20,
-			ignore_width_above = 0.8,
-			valid_modes = { i = true, s = true },
-			require_active_param = false,
-			auto_show = true,
-			win_config = {
-				border = 'rounded',
-				close_events = { 'BufLeave', 'WinScrolled' },
-			},
-			overrides = {
-				lsp_sig = true,
-				lsc_on_attach = true,
-			},
-			mappings = { { 'i', '<C-S-Space>' } },
+	default_config = {
+		max_line_offset = 5,
+		max_column_offset = 20,
+		ignore_width_above = 0.8,
+		valid_modes = { i = true, s = true },
+		require_active_param = false,
+		auto_show = true,
+		win = {
+			border = 'rounded',
+			close_events = { 'BufLeave', 'WinScrolled' },
 		},
+		override = {
+			lsp_sig = true,
+			lsc_on_attach = true,
+		},
+		mapping = { { 'i', '<C-S-Space>' } },
 	},
 	win = {
 		bufnr = 0,
@@ -43,7 +41,7 @@ local M = {
 		param_idx = -1,
 	},
 }
-M.config = M.defaults.config
+M.config = M.default_config
 
 function M.win.close(self)
 	if self.id < 0 then return end
@@ -93,7 +91,7 @@ function M.signature.needs_update(self, sig, content_only)
 	return true
 end
 
-function M.defaults.overrides.lsp_sig(_, sig, ctx, config)
+function M.override.reform.lsp_sig(_, sig, ctx, config)
 	-- Ignore result since buffer changed. This happens for slow language servers.
 	if vim.api.nvim_get_current_buf() ~= ctx.bufnr then return end
 
@@ -109,6 +107,7 @@ function M.defaults.overrides.lsp_sig(_, sig, ctx, config)
 	end
 
 	local lines, hl =
+		---@diagnostic disable-next-line: param-type-mismatch
 		vim.lsp.util.convert_signature_help_to_markdown_lines(sig, vim.bo[ctx.bufnr].filetype, {})
 	if not lines or #lines == 0 then return end
 
@@ -117,7 +116,7 @@ function M.defaults.overrides.lsp_sig(_, sig, ctx, config)
 	else
 		if not cursor then cursor = vim.api.nvim_win_get_cursor(0) end
 		M.win.cul, M.win.cuc = cursor[1], cursor[2]
-		config = vim.tbl_deep_extend('force', M.config.win_config, config or {})
+		config = vim.tbl_deep_extend('force', M.config.win, config or {})
 		config.max_height = config.max_height or math.floor(vim.api.nvim_win_get_height(0) / 3)
 		config.focus_id = ctx.method
 		M.win.bufnr, M.win.id = vim.lsp.util.open_floating_preview(lines, 'markdown', config)
@@ -129,7 +128,7 @@ function M.defaults.overrides.lsp_sig(_, sig, ctx, config)
 	end
 end
 
-function M.defaults.overrides.lsc_on_attach(client, bufnr)
+function M.override.reform.lsc_on_attach(client, bufnr)
 	if client.server_capabilities.signatureHelpProvider then
 		vim.api.nvim_create_autocmd({ 'CursorHoldI', 'CompleteDone', 'CursorMovedI', 'ModeChanged' }, {
 			callback = function(state)
@@ -168,8 +167,8 @@ function M.toggle()
 	end
 end
 
-function M.overrides.set.lsp_sig(fn) vim.lsp.handlers['textDocument/signatureHelp'] = fn end
-function M.overrides.set.lsc_on_attach(fn)
+function M.override.set.lsp_sig(fn) vim.lsp.handlers['textDocument/signatureHelp'] = fn end
+function M.override.set.lsc_on_attach(fn)
 	if M.lsc_on_attach ~= nil then
 		M.lsc_on_attach = fn
 		return
@@ -185,30 +184,6 @@ function M.overrides.set.lsc_on_attach(fn)
 	end)
 end
 
-function M.setup(config)
-	if type(config) == 'boolean' then
-		if config then
-			config = M.defaults.config
-		else
-			config = {}
-			for k, _ in pairs(M.defaults.config.overrides) do
-				config[k] = false
-			end
-			config = { overrides = config }
-		end
-	end
-
-	M.config = vim.tbl_deep_extend('force', M.config, config)
-	for k, v in pairs(M.config.overrides) do
-		if v then
-			M.overrides.set[k](type(v) == 'function' and v or M.defaults.overrides[k])
-		else
-			M.overrides.set[k](M.overrides.vim[k])
-		end
-	end
-	for _, bind in ipairs(M.config.mappings) do
-		vim.keymap.set(bind[1], bind[2], M.toggle)
-	end
-end
+function M.gen_mapping(_) return M.toggle end
 
 return M

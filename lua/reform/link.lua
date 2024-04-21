@@ -1,11 +1,14 @@
 ---@diagnostic disable: need-check-nil
+---@type reform.link
+---@diagnostic disable-next-line: missing-fields
 local M = {
-	defaults = {
+	default_config = {
 		unknown = 'definition',
-		mappings = { { { '', 'i' }, '<C-LeftMouse>' }, { 'n', 'gL' } },
+		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { 'n', 'gL' } },
 		filter = { tolerance = { startPost = 1, endPre = 1 } },
 	},
 }
+M.config = M.default_config
 M.matchers = {
 	markdown_url = {
 		luapat = '%[.-%]%((https?://[^)]+)%)',
@@ -101,7 +104,7 @@ M.matchers = {
 		end,
 	},
 }
-M.defaults.matchers = {
+M.default_config.matchers = {
 	'markdown_url',
 	'any_url',
 	'markdown_file_uri',
@@ -173,12 +176,8 @@ function M.mouse()
 	M.handle(data)
 end
 
-M.config = M.defaults
-function M.setup(config)
-	M.config = config == true and M.defaults or vim.tbl_deep_extend('force', M.config, config)
-	for _, bind in ipairs(M.config.mappings) do
-		vim.keymap.set(bind[1], bind[2], bind[2]:match '[Mm]ouse' and M.mouse or M.key)
-	end
+function M.gen_mapping(bind)
+	return bind[2]:match '[Mm]ouse' and M.mouse or M.key
 end
 
 return M

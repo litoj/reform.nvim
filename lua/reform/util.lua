@@ -1,7 +1,7 @@
 ---@type reform.util
 ---@diagnostic disable-next-line: missing-fields
 local M = {
-	winConfig = {
+	win = {
 		title_pos = 'center',
 		title = { { '[', 'FloatBorder' }, { '', 'FloatTitle' }, { ']', 'FloatBorder' } },
 		relative = 'cursor',
