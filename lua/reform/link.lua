@@ -116,7 +116,7 @@ M.default_config.matchers = {
 }
 
 function M.handle(ev)
-	if require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.filter) then
+	if require('reform.util').find_match(ev, M.config.matchers, M.matchers, M.config.filter) then
 		return
 	end
 

@@ -3,23 +3,24 @@
 ---@class reform.util.MatchFilter
 ---@field tolerance? {startPost:integer,startPre:integer,endPost:integer,endPre:integer} startPost=if match starts after cursor, how far after (post-cursor) it can start...
 ---@field sorting? {order:integer,matcher:integer,offset:integer,length:integer}|fun(ev:reform.util.Event,order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer|false
----@alias reform.util.Event {buf:integer,line:integer,column:integer,filter?:reform.util.MatchFilter}
+---@class reform.util.Event
+---@field buf integer
+---@field line integer
+---@field column integer
+---@field filter reform.util.MatchFilter
 ---@alias reform.util.Matcher {luapat?:string,vimre?:string,group?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure, group= lower → higher priority
 ---@alias reform.util.MatcherMap table<string,reform.util.Matcher>
 ---@alias reform.util.MatcherRefs (reform.util.Matcher|string)[] matchers or their references by name
 ---@alias reform.util.MatcherList reform.util.MatcherRefs|fun(event:reform.util.Event):reform.util.MatcherRefs regex & matched text handler pairs or reference to predefined matchers
 ---@class reform.util
 ---@field win reform.util.WinConfig default window configuration
----@field filter reform.util.MatchFilter default findMatch filter/settings - tolerance + sorting
----@field mkWin fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
----@field findMatch fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
----@field applyMatcher fun(matcher:reform.util.Matcher,event?:reform.util.Event):reform.util.Match|false
+---@field filter reform.util.MatchFilter default find_match filter/settings - tolerance + sorting
+---@field mk_win fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
+---@field find_match fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
+---@field apply_matcher fun(matcher:reform.util.Matcher,event?:reform.util.Event):reform.util.Match|false
 ---@field with_mod fun(mod:string,callback:function) run callback when given module is loaded
 
--- TODO: refactor all names to be snake_case
-
 ---@alias reform.Overridable function|boolean defines which function to use - default/plugin default/provided
-
 ---@alias nvim.Keymap {[1]:string|string[],[2]:string,[3]?:any} mode, key, opts for gen_mapping
 ---@alias reform.Config.Mapping.mapping table<string,nvim.Keymap|nvim.Keymap[]>|nvim.Keymap|nvim.Keymap[]
 ---@class reform.Config.Mapping
@@ -81,15 +82,21 @@
 ---@field mouse fun() open link under mouse - at click position
 
 ---@class reform.toggle.Config: reform.Config.Mapping
----@field mapping? table<string,{[1]:string|string[], [2]:string, [3]:{action:'tgl'|'inc'|'dec',afterCursor?:boolean,moveCursor?:boolean}}> mapping for actions - mode, keybind, action
+---@field mapping? table<string,{[1]:string|string[], [2]:string, [3]:{action?:'tgl'|'inc'|'dec',afterCursor?:boolean,moveCursor?:boolean}}> mapping for actions - mode, keybind, action
 ---@field matchers? reform.util.MatcherList
 ---@field filter? reform.util.MatchFilter
+
+---@class reform.toggle.Event: reform.util.Event
+---@field setCol? 'start'|'end'|'closer' set cursor to start/end/closer of the match
+---@field action 'tgl'|'inc'|'dec' what should the matcher do with the match
 
 ---@class reform.toggle: reform.Mapping
 ---@field default_config reform.toggle.Config
 ---@field config reform.toggle.Config
+---@field replace fun(match:reform.util.Match,ev:reform.util.Event,val:string) replace matched text in buffer with given value
+---@field gen_seq_handler fun(seq:string[],matcher?:reform.util.Matcher):reform.util.Matcher create matcher for cycling/toggling between given strings
 ---@field matchers reform.util.MatcherMap
----@field handle fun(ev:reform.util.Event) use setup matchers to change value at line:col
+---@field handle fun(ev:reform.toggle.Event):reform.util.Match? use setup matchers to change value at line:col
 
 ---@class reform.tbl_extras.Config: reform.Config.Override
 ---@field override? {print?: boolean} set custom table printer as extension of the global one

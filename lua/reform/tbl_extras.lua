@@ -7,13 +7,8 @@ local M = {
 		reform = {},
 	},
 	default_config = {
-		diff = {
-			expand_unique = '…',
-		},
-		cut_depth = {
-			depth = 2,
-			cuts = {},
-		},
+		diff = { expand_unique = '…' },
+		cut_depth = { depth = 2, cuts = {} },
 		override = { print = true },
 	},
 }

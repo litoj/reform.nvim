@@ -13,7 +13,7 @@ local M = {
 	},
 	debug = false,
 }
-function M.mkWin(buf, opts, prompt)
+function M.mk_win(buf, opts, prompt)
 	local mode = vim.api.nvim_get_mode().mode
 	vim.bo[buf].buftype = 'nofile'
 	vim.bo[buf].bufhidden = 'wipe'
@@ -43,7 +43,7 @@ function M.mkWin(buf, opts, prompt)
 	return win
 end
 
-function M.findMatch(event, matchers, default, filter)
+function M.find_match(event, matchers, default, filter)
 	filter = vim.tbl_deep_extend('force', M.filter, filter, event.filter or {})
 	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
 	local column = event.column
@@ -63,6 +63,7 @@ function M.findMatch(event, matchers, default, filter)
 				local from, to = re:match_str(line:sub(_from))
 				if not from then return end
 				from, to = from + _from, to + _from - 1
+				---@type reform.util.Match
 				local ret = vim.fn.matchlist(line:sub(from, to), matcher.vimre) -- includes entire match
 				ret.from = from
 				ret.to = to
@@ -113,7 +114,7 @@ function M.findMatch(event, matchers, default, filter)
 		for i, v in ipairs(order) do
 			data[i] = { v[1], v[3][1], v[3].from, v[3].to }
 		end
-		vim.notify('reform.util.findMatch.order: ' .. vim.inspect(data))
+		vim.notify('reform.util.find_match.order: ' .. vim.inspect(data))
 	end
 	for _, pair in ipairs(order) do
 		if pair[2].use(pair[3][1], pair[3], event) ~= false then return pair[3] end
@@ -122,7 +123,7 @@ function M.findMatch(event, matchers, default, filter)
 	return false -- no successful matcher found
 end
 
-function M.applyMatcher(matcher, ev)
+function M.apply_matcher(matcher, ev)
 	ev = ev or {}
 	local pos = vim.api.nvim_win_get_cursor(0)
 	if not ev.line or ev.autoLine then
@@ -134,7 +135,13 @@ function M.applyMatcher(matcher, ev)
 		ev.autoColumn = true
 	end
 	ev.buf = 0
-	return M.findMatch(ev, { matcher }, {}, {})
+	return M.find_match(ev, { matcher }, {}, {})
+end
+
+function M.replace(match, ev, with)
+	local line = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line, true)[1]
+	line = line:sub(1, match.from - 1) .. with .. line:sub(match.to + 1)
+	vim.api.nvim_buf_set_lines(ev.buf, ev.line - 1, ev.line, true, { line })
 end
 
 function M.with_mod(mod, cb)
@@ -145,13 +152,8 @@ function M.with_mod(mod, cb)
 		if old then
 			old()
 		else
-			for _, loader in pairs(package.loaders) do
-				local ret = loader(mod)
-				if type(ret) == 'function' then
-					package.loaded[mod] = ret()
-					break
-				end
-			end
+			package.loaded[mod] = nil
+			package.loaded[mod] = package.loaders[2](mod)()
 		end
 		cb(package.loaded[mod])
 	end

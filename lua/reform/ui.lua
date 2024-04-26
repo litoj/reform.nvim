@@ -1,4 +1,6 @@
 ---@diagnostic disable: inject-field
+local util = require 'reform.util'
+
 ---@type reform.ui
 ---@diagnostic disable-next-line: missing-fields
 local M = {
@@ -16,11 +18,11 @@ local M = {
 			input = vim.tbl_extend('force', {
 				height = 1,
 				row = -3,
-			}, require('reform.util').win),
+			}, util.win),
 			select = vim.tbl_extend(
 				'force',
 				{ col = -2, row = 1, winhl = 'Id:Repeat,VarDelim:Delimiter' },
-				require('reform.util').win
+				util.win
 			),
 		},
 		input_mapping = { -- TODO: refactor to use standard mechanism, same for select
@@ -42,7 +44,7 @@ function M.override.reform.input(opts, on_confirm)
 
 	M.config.win.input.col = -width / 2
 	M.config.win.input.width = width + (#default > 10 and #default * 2 or 20)
-	local win = require('reform.util').mkWin(buf, M.config.win.input, opts.prompt)
+	local win = util.mk_win(buf, M.config.win.input, opts.prompt)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
 	vim.cmd.startinsert { bang = true }
@@ -139,7 +141,7 @@ function M.override.reform.select(items, opts, on_choice)
 
 	M.config.win.select.height = #items
 	M.config.win.select.width = width
-	local win = require('reform.util').mkWin(buf, M.config.win.select, opts.prompt)
+	local win = util.mk_win(buf, M.config.win.select, opts.prompt)
 	vim.api.nvim_win_set_cursor(win, { 1, 1 })
 	vim.api.nvim_create_autocmd('CursorMoved', {
 		buffer = buf,

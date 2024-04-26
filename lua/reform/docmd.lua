@@ -1,4 +1,4 @@
----@diagnostic disable: param-type-mismatch, need-check-nil
+---@diagnostic disable: param-type-mismatch, need-check-nil, undefined-field
 ---@type reform.docmd
 ---@diagnostic disable-next-line: missing-fields
 local M = {

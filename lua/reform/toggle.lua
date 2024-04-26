@@ -1,3 +1,6 @@
+---@diagnostic disable: undefined-field, assign-type-mismatch
+local util = require 'reform.util'
+
 ---@type reform.toggle
 ---@diagnostic disable-next-line: missing-fields
 local M = {
@@ -24,7 +27,7 @@ function M.replace(match, ev, with)
 	line = line:sub(1, match.from - 1) .. with .. line:sub(match.to + 1)
 	vim.api.nvim_buf_set_lines(ev.buf, ev.line - 1, ev.line, true, { line })
 end
-function M.genSeqHandler(seq, matcher)
+function M.gen_seq_handler(seq, matcher)
 	if not matcher then matcher = {} end
 	matcher.use = function(val, match, ev)
 		local dir = ev.action == 'dec' and -1 or (ev.action == 'inc' and 1 or #seq / 2)
@@ -32,7 +35,7 @@ function M.genSeqHandler(seq, matcher)
 	end
 
 	if matcher.luapat or matcher.vimre then
-		for i, v in ipairs(seq) do
+		for i, v in ipairs(seq) do -- reverse lookup
 			seq[v] = i
 		end
 	else
@@ -57,7 +60,7 @@ function M.genSeqHandler(seq, matcher)
 end
 
 M.matchers = {
-	answer = M.genSeqHandler { 'yes', 'no' },
+	answer = M.gen_seq_handler { 'yes', 'no' },
 	bool = {
 		vimre = [[\<\([Tt]rue\|[Ff]alse\)\>]],
 		group = 3,
@@ -69,7 +72,7 @@ M.matchers = {
 			end
 		end,
 	},
-	direction = M.genSeqHandler { 'up', 'north', 'east', 'down', 'south', 'west' },
+	direction = M.gen_seq_handler { 'up', 'north', 'east', 'down', 'south', 'west' },
 	int = {
 		vimre = [[-\?\d\+]],
 		group = 1,
@@ -94,7 +97,7 @@ M.matchers = {
 			end
 		end,
 	},
-	sign = M.genSeqHandler { '<', '=', '+', '*', '^', '>', '!', '-', '/', '%' },
+	sign = M.gen_seq_handler { '<', '=', '+', '*', '^', '>', '!', '-', '/', '%' },
 	state = {
 		vimre = [[\<\(enabled\?\|disabled\?\)\>]],
 		use = function(_, match, ev)
@@ -105,13 +108,13 @@ M.matchers = {
 			end
 		end,
 	},
-	toggle = M.genSeqHandler { 'on', 'off' },
+	toggle = M.gen_seq_handler { 'on', 'off' },
 }
 M.default_config.matchers =
 	{ 'int', 'direction', 'bool', 'logic', 'state', 'toggle', 'answer', 'sign' }
 
 function M.handle(ev)
-	local match = require('reform.util').findMatch(ev, M.config.matchers, M.matchers, M.config.filter)
+	local match = util.find_match(ev, M.config.matchers, M.matchers, M.config.filter)
 	if not match then return vim.notify 'No toggleable found' end
 	if ev.setCol and (match.from > ev.column or match.to < ev.column) then
 		local col = ev.setCol == 'end' and match.to or match.from
@@ -122,15 +125,15 @@ function M.handle(ev)
 end
 
 --- Generate a function that applies given substitution generator to the current line
----@param matcher {luapat?:string,vimre?:string,(use:fun(val:string,match:reform.util.Match,ev:reform.util.Event):string|false),setCursor?:false|fun(match:reform.util.Match,col:integer):integer|false} generates the replacement string
+---@param matcher {luapat?:string,vimre?:string,(use:fun(val:string,match:reform.util.Match,ev:reform.toggle.Event):string|false),setCursor?:false|fun(match:reform.util.Match,col:integer):integer|false} generates the replacement string
 ---@return fun() returns generated function that applies the matcher
-function M.genSubApplicator(matcher)
+function M.gen_sub_applicator(matcher)
 	local substitutor = matcher.use
 	matcher.use = function(val, match, ev)
 		local sub = substitutor(val, match, ev)
 		if not sub then return false end
 		M.replace(match, ev, sub)
-		local pos = false
+		local pos = false --[[@type integer|false]]
 		if matcher.setCursor == nil then
 			pos = match and match.from <= ev.column and (match.from + #sub - 1)
 		elseif matcher.serCursor then
@@ -139,7 +142,7 @@ function M.genSubApplicator(matcher)
 		if pos then vim.api.nvim_win_set_cursor(0, { ev.line, pos }) end
 	end
 	local ev = { filter = { tolerance = { endPre = 1 } } }
-	return function() require('reform.util').applyMatcher(matcher, ev) end
+	return function() util.apply_matcher(matcher, ev) end
 end
 
 function M.gen_mapping(bind, action)
