@@ -81,14 +81,19 @@ function M.tbl_print(tbl)
 end
 
 --- global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
-function M.override.reform.print(x, y, ...)
+function M.override.reform.print(...)
+	local bundled = { ... }
+	local x, y = bundled[1], bundled[2]
 	if type(x) ~= 'table' then
-		M.override.vim.print(x, y, ...)
+		M.override.vim.print(...)
 	elseif type(y) == 'table' then
 		M.tbl_print(M.tbl_diff({}, x, y, ...) or {})
 	elseif y == nil or type(y) == 'number' then
 		M.tbl_print(M.tbl_cut_depth(x, { depth = y }))
 	end
 end
+
+-- TODO: add hot reload with keybind and configurable handlers for matches, ideally use findMatcher
+-- by default look for config/default.*/
 
 return M

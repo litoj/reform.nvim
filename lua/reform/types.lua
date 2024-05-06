@@ -7,7 +7,7 @@
 ---@field buf integer
 ---@field line integer
 ---@field column integer
----@field filter reform.util.MatchFilter
+---@field filter? reform.util.MatchFilter
 ---@alias reform.util.Matcher {luapat?:string,vimre?:string,group?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure, group= lower → higher priority
 ---@alias reform.util.MatcherMap table<string,reform.util.Matcher>
 ---@alias reform.util.MatcherRefs (reform.util.Matcher|string)[] matchers or their references by name

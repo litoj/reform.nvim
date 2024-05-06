@@ -46,19 +46,26 @@ M.matchers = {
 	stacktrace_file_path = {
 		luapat = '(~?[%w/._%-]+:?%d*:?%d*)',
 		use = function(path, matches, ev)
-			local bufdir =
-				vim.api.nvim_buf_get_name(ev.buf):gsub('term://(.+/)/%d+:.*$', '%1'):gsub('[^/]+$', '')
+			local bufdir = vim.api
+				.nvim_buf_get_name(ev.buf)
+				:gsub('^term://(.+/)/%d+:.*$', '%1', 1)
+				:gsub('^~', os.getenv 'HOME', 1)
+			local cwd = vim.loop.cwd()
+			local function exists(f)
+				f = io.open(f)
+				if f then f:close() end
+				return f ~= nil
+			end
 			local function real(path)
 				local pos = path:match ':.+$' or false
 				if pos then path = path:sub(1, #path - #pos) end
-				for _, f in ipairs { bufdir .. path, path:gsub('^~', os.getenv 'HOME') } do
-					local ok = io.open(f)
-					if ok then
-						ok:close()
-						return f, pos
-					end
-				end
-				return nil, pos
+				path = path:gsub('^~', os.getenv 'HOME', 1)
+
+				if exists(path) then return path, pos end
+				local dir = bufdir .. path
+				if exists(dir) then return dir, pos end
+				dir = cwd:gsub('[^/]+$', path, 1) -- src/ is often in both cwd and path
+				return exists(dir) and dir or nil, pos
 			end
 
 			local file, pos = real(path)
@@ -166,18 +173,16 @@ end
 
 function M.key()
 	local pos = vim.api.nvim_win_get_cursor(0)
-	M.handle { buf = 0, line = pos[1], column = pos[2] + 1 }
+	return M.handle { buf = 0, line = pos[1], column = pos[2] + 1 }
 end
 
 function M.mouse()
 	local data = vim.fn.getmousepos()
 	data.mouse = true
 	data.buf = vim.api.nvim_win_get_buf(data.winid)
-	M.handle(data)
+	return M.handle(data)
 end
 
-function M.gen_mapping(bind)
-	return bind[2]:match '[Mm]ouse' and M.mouse or M.key
-end
+function M.gen_mapping(bind) return bind[2]:match '[Mm]ouse' and M.mouse or M.key end
 
 return M
