@@ -144,6 +144,8 @@ function M.override.reform.lsc_on_attach(client, bufnr)
 					end
 					return
 				elseif M.config.auto_show then -- CursorHoldI or CompleteDone
+					local pos = vim.api.nvim_win_get_cursor(0)
+					if pos[1] == M.win.cul and pos[2] == M.win.cuc then return end
 					vim.lsp.buf.signature_help()
 				end
 			end,
