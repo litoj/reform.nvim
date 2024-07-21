@@ -11,29 +11,18 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 	char *fmt     = *fmtPtr;
 	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	while (*doc == ' ' || *doc == '\n') doc++;
-	*fmt++ = *doc;
-	switch (*doc) {
-		case '"': // string "..."
-			while (*++doc >= ' ' && *doc != '"') {
-				if (*doc == '\\') *fmt++ = *doc++;
-				*fmt++ = *doc;
-			}
-			break;
-		case '\'': // string '...'
-			while (*++doc >= ' ' && *doc != '\'') {
-				if (*doc == '\\') *fmt++ = *doc++;
-				*fmt++ = *doc;
-			}
-			break;
-		default: return;
+	const in delim = *fmt++ = *doc;
+	while (*++doc >= ' ' && *doc != delim) {
+		if (*doc == '\\') *fmt++ = *doc++;
+		*fmt++ = *doc;
 	}
 	*fmt++  = *doc;
 	*docPtr = doc;
 	*fmtPtr = fmt;
 }
 
-static const char *types[] = {"string",  "any",   "(",     "Function", "number",
-                              "integer", "never", "float", "\"",       "'"};
+static const char *types[] = {"string", "any",   "(",  "Function", "number", "integer",
+                              "never",  "float", "\"", "'",        "`"};
 static const int typeCnt   = sizeof(types) / sizeof(const char *);
 
 /**
@@ -127,8 +116,9 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				*fmt++ = '.';
 				*fmt++ = '0';
 				break;
-			case 8:
-			case 9: // string
+			case 8: // string
+			case 9:
+			case 10:
 				doc--;
 				add_string(&doc, &fmt);
 				doc++;
@@ -185,13 +175,9 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 	int object    = 0; // are we inside object definition ({})
 	while (!alike(++doc, stop) && *doc) {
 		switch (*doc) {
-			case '[': // string [[...]]
-				if (doc[1] != '[') {
-					*fmt++ = '[';
-					break;
-				}
 			case '"':  // string "..."
 			case '\'': // string '...'
+			case '`': // string '...'
 				add_string(&doc, &fmt);
 				break;
 			case '{':
@@ -471,7 +457,8 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 				char *fmtTmp = fmt - 1;
 				while (fmtTmp > fmt0 && ((*fmtTmp >= 'a' && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
 				if (*fmtTmp >= 'A' && *fmtTmp <= 'Z' && // '\n Example:' -> '\n **Example:**'
-					  (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' || alike((in*)fmtTmp - 2, "\n ") > 0)) {
+				    (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' ||
+				     alike((in *) fmtTmp - 2, "\n ") > 0)) {
 					for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 					*++fmtTmp = '*';
 					*++fmtTmp = '*';
@@ -523,9 +510,9 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 				if (alike(++doc, "---\n") > 0) doc += 4;
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
-				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
-				      doc[j + 1] == ' ') || // param description
-				  alike(doc + j, "• ") > 0) {
+				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') && doc[j + 1] == ' '
+				    ) || // param description
+				    alike(doc + j, "• ") > 0) {
 					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
 						doc += indent[0] = j;
 						indent[1] = indent[2] = 0;

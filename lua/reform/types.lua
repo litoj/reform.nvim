@@ -1,4 +1,4 @@
----@alias reform.util.WinConfig vim.api.keyset.float_config|{winhl:table<string,string>}
+---@alias reform.util.WinConfig vim.api.keyset.win_config|{winhl:table<string,string>}
 ---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
 ---@class reform.util.MatchFilter
 ---@field tolerance? {startPost:integer,startPre:integer,endPost:integer,endPre:integer} startPost=if match starts after cursor, how far after (post-cursor) it can start...
@@ -121,7 +121,7 @@
 ---@field mapppings? {toggle:string[]} keymap for toggling displayed window + auto_show
 ---@field max_line_offset? integer
 ---@field max_column_offset? integer
----@field ignore_width_above? float
+---@field ignore_width_above? number
 ---@field valid_modes? table<string,boolean>
 ---@field require_active_param? boolean
 ---@field auto_show? boolean
