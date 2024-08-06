@@ -25,7 +25,7 @@ feel more like an IDE with a few QoL improvements (all fully customizable).
 
 ```lua
 return {
-  'JosefLitos/reform.nvim',
+  'litoj/reform.nvim',
   opts = {}, -- put your config here
   event = 'VeryLazy', -- or LspAttach and `key = {your link mapping}`
 }
@@ -91,7 +91,7 @@ require'reform'.setup {
       'reform_vimdoc_ref',    -- [VimHelpLink]
       'vimdoc_ref',           -- |VimHelpLink|
       'stacktrace_file_path', -- ~/multiline/path/to/file:line:column
-      'nvim_plugin',          -- 'JosefLitos/reform.nvim'
+      'nvim_plugin',          -- 'litoj/reform.nvim'
     },
     fallback = 'definition' -- action on no match - invalid value / 'noop' means no action
       -- git link generation: {copy: boolean, print: boolean, branch:'default'|'current'|fun(ev)}
@@ -167,11 +167,11 @@ Language servers bellow were tested.
 </summary>
 
 - `bashls`
-  ![Bash/sh](https://github.com/JosefLitos/reform.nvim/assets/54900518/8a66cac0-52a9-4672-adae-9c44bc3cf3c4)
+  ![Bash/sh](https://github.com/litoj/reform.nvim/assets/54900518/8a66cac0-52a9-4672-adae-9c44bc3cf3c4)
 - `clangd`
-  ![C/C++](https://github.com/JosefLitos/reform.nvim/assets/54900518/ccbac42a-f2a6-4ffd-8abd-c3e3d2d81c78)
+  ![C/C++](https://github.com/litoj/reform.nvim/assets/54900518/ccbac42a-f2a6-4ffd-8abd-c3e3d2d81c78)
 - `typescript-language-server`
-  ![Javascript/Typescript](https://github.com/JosefLitos/reform.nvim/assets/54900518/a0e954a4-429f-4d9a-a460-5525678a8c0c)
+  ![Javascript/Typescript](https://github.com/litoj/reform.nvim/assets/54900518/a0e954a4-429f-4d9a-a460-5525678a8c0c)
 - `jdtls`
   ![Java](https://user-images.githubusercontent.com/54900518/212200591-deb797c5-c798-4d31-b8c2-3df1a3b9e17b.png)
 - `luals`, including Vim-style documentation
