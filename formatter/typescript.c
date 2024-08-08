@@ -23,7 +23,20 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 
 static const char *types[] = {"string", "any",   "(",  "Function", "number", "integer",
                               "never",  "float", "\"", "'",        "`"};
-static const int typeCnt   = sizeof(types) / sizeof(const char *);
+enum {
+	STRING,
+	ANY,
+	LAMBDA,
+	FUNCTION,
+	NUMBER,
+	INTEGER,
+	NEVER,
+	FLOAT,
+	STR1,
+	STR2,
+	STR3
+};
+static const int typeCnt = sizeof(types) / sizeof(const char *);
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -43,7 +56,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			if ((len = alike(doc, types[type]))) break;
 		doc += len;
 		switch (type) {
-			case 0: // string
+			case STRING:
 				if (doc[1] == '=') {
 					doc += 2;
 					add_string(&doc, &fmt);
@@ -53,10 +66,10 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					*fmt++ = '"';
 				}
 				break;
-			case 1: // any
+			case ANY:
 				if (*doc != '[') fmt = append(fmt, "any");
 				break;
-			case 2: { // ( - lambda with specified args
+			case LAMBDA: {
 				*fmt++         = '(';
 				char isWrapped = *doc == '(';
 				if (isWrapped) *fmt++ = *doc++;
@@ -100,25 +113,23 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 				if (isWrapped) *fmt++ = *doc++;
 			} break;
-			case 3: // Function
-				fmt = append(fmt, "()=>_");
-				break;
-			case 4: // number
-			case 5: // integer
+			case FUNCTION: fmt = append(fmt, "()=>_"); break;
+			case NUMBER:
+			case INTEGER:
 				*fmt++ = '0';
 				*fmt++ = '.';
 				break;
-			case 6:                       // never
+			case NEVER:
 				fmt = append(fmt, "NEVER"); // TODO: generics only use these -> catch in code block
 				break;
-			case 7: // float
+			case FLOAT:
 				*fmt++ = '0';
 				*fmt++ = '.';
 				*fmt++ = '0';
 				break;
-			case 8: // string
-			case 9:
-			case 10:
+			case STR1:
+			case STR2:
+			case STR3:
 				doc--;
 				add_string(&doc, &fmt);
 				doc++;
@@ -154,8 +165,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 		}
 		while (*doc == ' ') doc++;
 	} while (*doc == '|');
-
-	*docPtr = doc[-1] == ' ' ? doc - 1 : doc;
+	*docPtr = doc[-1] == ' ' && doc - *docPtr > 2 ? doc - 1 : doc;
 	*fmtPtr = fmt;
 }
 
@@ -172,20 +182,20 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 	char *fmt     = *fmtPtr;
 	*fmt++        = *doc;
 	int params    = 0; // are we in param/arg section of a function
-	int object    = 0; // are we inside object definition ({})
+	// int object    = 0; // are we inside object definition ({})
 	while (!alike(++doc, stop) && *doc) {
 		switch (*doc) {
 			case '"':  // string "..."
 			case '\'': // string '...'
-			case '`': // string '...'
+			case '`':  // string '...'
 				add_string(&doc, &fmt);
 				break;
 			case '{':
 				*fmt++ = '{';
-				if (doc[1] == '\n') object++;
+				// if (doc[1] == '\n') object++;
 				break;
 			case '}':
-				if (fmt[-1] == '\n' && object) object--;
+				// if (fmt[-1] == '\n' && object) object--;
 				*fmt++ = '}';
 				break;
 			case '(':
@@ -195,6 +205,7 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 					while (*fmtTmp != '\n' && *fmtTmp != ' ') fmtTmp--;
 					if ((*fmtTmp == ' ' && alike((in *) fmtTmp - 9, "\nfunction")) || fmt[-1] == '>')
 						params = 1;
+					else params = -1;
 				}
 				*fmt++ = '(';
 				break;
@@ -218,25 +229,8 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 					if (*doc == '\n') fmt = append(fmt, " {}");
 				}
 				break;
-			case '\n':
-				*fmt++ = '\n';
-				{ // numbered return type - multiple return options - `  2. retVal`
-					if (doc[1] != ' ' || doc[2] != ' ') break;
-					doc += 2;
-					*fmt++           = ' ';
-					*fmt++           = ' ';
-					const in *docTmp = doc + 1;
-					while ('0' <= *docTmp && *docTmp <= '9') docTmp++;
-					if (*docTmp != '.') break;
-					doc    = docTmp;
-					*fmt++ = '-';
-				}
 			case ':': // type
-				if (object || params) *fmt++ = ':';
-				else {
-					*fmt++ = ' ';
-					*fmt++ = '=';
-				}
+				*fmt++ = ':';
 				if (doc[1] == '\n') {
 					doc += 2;
 					while (*doc != '|') doc++;
@@ -259,10 +253,6 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 			case '\\':
 				*fmt++ = '\\';
 				*fmt++ = *++doc;
-				break;
-			case ';':
-				if (doc[1] == '\n') *fmt++ = ',';
-				else *fmt++ = ';';
 				break;
 			case '/': // comment
 				if (doc[1] == '/')
@@ -485,10 +475,12 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 					*fmt++ = ':';
 					if (alike(doc, " -") > 0) doc += 2;
 				} else if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
-				else if (kind == 'E') { // example
-					fmt = append(fmt, "\n```ts\n");
-					while (*++doc) *fmt++ = *doc;
-					fmt = append(fmt, "```");
+				else if (kind == 'E') {               // example
+					fmt = append(fmt - 1, "\n```ts\n"); // -1 for the appended '**: '
+					while (*doc++ > '\n') {}
+					code_fmt(&doc, &fmt, "```");
+					while (*--fmt <= ' ') {}
+					fmt = append(fmt + 1, "```");
 					return fmt;
 				} else {
 					while (*++doc > ' ') *fmt++ = *doc;

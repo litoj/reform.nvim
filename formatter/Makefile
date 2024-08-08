@@ -29,7 +29,7 @@ main.out: $(OBJ)
 debug: main.out
 
 testDir:
-	@-rm -r /tmp/reform.test/
+	@[ ! -d /tmp/reform.test/ ] || rm -r /tmp/reform.test/
 	@mkdir -p /tmp/reform.test/
 
 test/%in.md: debug testDir
