@@ -44,7 +44,7 @@ M.matchers = {
 	},
 	vimdoc_ref = { luapat = '|(%S-)|', use = function(match) return pcall(vim.cmd.help, match) end },
 	stacktrace_file_path = {
-		luapat = '(~?[%w/._%-]+:?%d*:?%d*)',
+		luapat = '(~?[%w/.@_%-]+:?%d*:?%d*)',
 		use = function(path, matches, ev)
 			local bufdir = vim.api
 				.nvim_buf_get_name(ev.buf)
@@ -73,11 +73,7 @@ M.matchers = {
 				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
 				local src = { matches.from, matches.to, matches[1] }
 				if not pos and src[2] == #lines[1] and lines[2] then -- next line
-					pos = lines[2]:match '^([%w/._%-]*:?%d+:?%d*)'
-					if not pos then
-						pos = lines[2]:match '^%s*(%d+:?%d*)'
-						pos = pos and ':' .. pos or false
-					end
+					pos = lines[2]:match '^%s*([%w/._%-]*:?%d+:?%d*)' -- TODO: make this run for OK file
 					path = path .. (pos or '')
 					file, pos = real(path)
 				end
@@ -150,10 +146,18 @@ function M.handle(ev)
 	s[#s + 1] = s[1]:find('github.com', 1, true) and '/blob/' or '/-/blob/'
 	f:close()
 
-	local branch
+	local branch = ''
 	if cfg.branch == 'current' then -- get current branch name
-		f = io.popen('git branch --show-current', 'r')
-		branch = f:read '*l' or '' -- head detached → use default branch
+		f = io.popen('git branch', 'r')
+		while not vim.startswith(branch, '* ') do
+			branch = f:read '*l'
+		end
+
+		if vim.startswith(branch, '* (HEAD detached at') then
+			branch = branch:match ' (%S+)%)$'
+			if vim.startswith(branch, 'origin/') then branch = branch:sub(8) end
+		end
+
 		f:close()
 		s[#s + 1] = branch
 	end
@@ -168,6 +172,7 @@ function M.handle(ev)
 	f = io.popen('git rev-parse --show-toplevel', 'r') -- project root
 	s[#s + 1] = vim.api.nvim_buf_get_name(0):sub(#f:read '*l' + 1)
 	f:close()
+	-- TODO: enable multiline with visual mode
 	s[#s + 1] = '#L'
 	s[#s + 1] = ev.line
 	s = table.concat(s)
