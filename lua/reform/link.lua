@@ -4,7 +4,7 @@
 local M = {
 	default_config = {
 		unknown = 'definition',
-		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { 'n', 'gL' } },
+		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { '', 'gL' } },
 		filter = { tolerance = { startPost = 1, endPre = 1 } },
 	},
 }
@@ -123,31 +123,21 @@ M.default_config.matchers = {
 	'nvim_plugin',
 }
 
-function M.handle(ev)
-	if require('reform.util').find_match(ev, M.config.matchers, M.matchers, M.config.filter) then
-		return
-	end
-
-	local cfg = M.config.fallback
-	if cfg == 'definition' or ev.mouse then
-		if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
-		return vim.lsp.buf.definition()
-	elseif type(cfg) ~= 'table' then
-		return vim.notify 'No link found'
-	end
+function M.get_git_url(use_default_branch, from, to)
 	-- create link to current cursor position and copy to clipboard
 	local f = io.popen('git config --get remote.origin.url', 'r')
 	-- get base url, convert ssh to http url
 	local s = {}
 	s[#s + 1] = f:read '*l'
-	if #s == 0 then return vim.notify 'No link found' end
+	if #s == 0 then return end
 	s[1] = s[1]:gsub('git@(.-):', 'https://%1/'):gsub('%.git$', '')
 	-- github uses different path from gitlab
-	s[#s + 1] = s[1]:find('github.com', 1, true) and '/blob/' or '/-/blob/'
+	local isGithub = s[1]:find('github.com', 1, true)
+	s[#s + 1] = isGithub and '/blob/' or '/-/blob/'
 	f:close()
 
 	local branch = ''
-	if cfg.branch == 'current' then -- get current branch name
+	if not use_default_branch then -- get current branch name
 		f = io.popen('git branch', 'r')
 		while not vim.startswith(branch, '* ') do
 			branch = f:read '*l'
@@ -156,29 +146,63 @@ function M.handle(ev)
 		if vim.startswith(branch, '* (HEAD detached at') then
 			branch = branch:match ' (%S+)%)$'
 			if vim.startswith(branch, 'origin/') then branch = branch:sub(8) end
+		else
+			branch = branch:match ' (%S+)$'
 		end
 
 		f:close()
-		s[#s + 1] = branch
-	end
-	if cfg.branch == 'default' or branch == '' then
+	else
 		f = io.popen('git symbolic-ref refs/remotes/origin/HEAD', 'r')
-		s[#s + 1] = f:read('*l'):match '[^/]+$' -- trim path to just default branch name
+		branch = f:read('*l'):match '[^/]+$' -- trim path to just default branch name
 		f:close()
-	elseif branch == nil then
-		s[#s + 1] = cfg.branch(ev)
 	end
+	s[#s + 1] = branch
 
 	f = io.popen('git rev-parse --show-toplevel', 'r') -- project root
 	s[#s + 1] = vim.api.nvim_buf_get_name(0):sub(#f:read '*l' + 1)
 	f:close()
-	-- TODO: enable multiline with visual mode
-	s[#s + 1] = '#L'
-	s[#s + 1] = ev.line
-	s = table.concat(s)
 
-	if cfg.copy then vim.fn.setreg('+', s) end
-	if cfg.print then vim.print(s) end
+	s[#s + 1] = '#L'
+	s[#s + 1] = from
+	if to then
+		s[#s + 1] = isGithub and '-L' or '-'
+		s[#s + 1] = to
+	end
+
+	return table.concat(s)
+end
+
+function M.handle(ev)
+	local from, to = vim.fn.getpos('.')[2], vim.fn.getpos('v')[2]
+	if from > to then
+		local tmp = to
+		to = from
+		from = tmp
+	end
+
+	local cfg = M.config.fallback
+
+	if from == to or ev.mouse then -- not visual mode - ^$ on the same line or mouse click
+		from = ev.line
+		to = nil
+
+		if require('reform.util').find_match(ev, M.config.matchers, M.matchers, M.config.filter) then
+			return
+		end
+
+		if cfg == 'definition' or ev.mouse then
+			if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
+			return vim.lsp.buf.definition()
+		elseif type(cfg) ~= 'table' then
+			return vim.notify 'No link found'
+		end
+	end -- only get git url in visual mode
+
+	local link = M.get_git_url(cfg.branch == 'default', from, to)
+	if not link then return vim.notify 'No git repo found' end
+
+	if cfg.copy then vim.fn.setreg('+', link) end
+	if cfg.print then vim.print(link) end
 end
 
 function M.key()

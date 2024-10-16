@@ -77,6 +77,7 @@
 ---@field default_config reform.link.Config
 ---@field config reform.link.Config
 ---@field matchers reform.util.MatcherMap
+---@field get_git_url fun(use_default_branch:boolean,from:integer,to?:integer): string?
 ---@field handle fun(ev:reform.util.Event) use setup matchers to open link at line:col
 ---@field key fun() open link under caret
 ---@field mouse fun() open link under mouse - at click position

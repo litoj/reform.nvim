@@ -71,6 +71,7 @@ end
 
 function M.signature.needs_update(self, sig, content_only)
 	local s = sig.signatures[(sig.activeSignature or 0) + 1]
+	if not s then return false end
 	local param_idx = s.activeParameter or sig.activeParameter or -1
 
 	if
