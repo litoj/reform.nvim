@@ -36,29 +36,42 @@ local M = {
 M.config = M.default_config
 
 function M.override.reform.input(opts, on_confirm)
+	local origDir = vim.uv.cwd()
+	vim.uv.chdir(opts.dir or origDir)
+
+	local co
+	if not on_confirm then
+		co = coroutine.running()
+		assert(co, 'run in coroutine.wrap()ped fn or provide callback')
+		on_confirm = function(...) coroutine.resume(co, ...) end
+	end
+
 	local default = opts.default or ''
-	opts.prompt = opts.prompt and opts.prompt:gsub(':? *$', '') or ''
+	local prompt = (opts.prompt or ''):gsub(':? *$', '')
+
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].filetype = 'ui-input'
-	local width = #opts.prompt > #default and #opts.prompt + 2 or #default
+	local width = math.max(#prompt + 2, #default)
 
 	M.config.win.input.col = -width / 2
-	M.config.win.input.width = width + (#default > 10 and #default * 2 or 20)
-	local win = util.mk_win(buf, M.config.win.input, opts.prompt)
+	M.config.win.input.width = width + math.max(#default * 2, 20)
+	local win = util.mk_win(buf, M.config.win.input, prompt)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
 	vim.cmd.startinsert { bang = true }
 
 	local typed = default
 	local last = vim.fn.histnr '@'
-	local histpos = last + 1
+	local histPos = last + 1
 	local histUpdate = true
 
 	local function callback(confirmed)
+		vim.uv.chdir(origDir)
+
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
 		if confirmed then
-			if #text > 3 and not opts.prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
+			if #text > 3 and not prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
 			on_confirm(text)
 		else
 			on_confirm(opts.cancelreturn == nil and '' or opts.cancelreturn)
@@ -78,11 +91,11 @@ function M.override.reform.input(opts, on_confirm)
 		confirm = function() callback(true) end,
 
 		hist_prev = function()
-			if histpos == last + 1 then typed = vim.api.nvim_get_current_line() end
-			for i = histpos - 1, 1, -1 do
+			if histPos == last + 1 then typed = vim.api.nvim_get_current_line() end
+			for i = histPos - 1, 1, -1 do
 				local str = vim.fn.histget('@', i)
 				if str:find(typed, 1, true) then
-					histpos = i
+					histPos = i
 					histUpdate = true
 					vim.api.nvim_set_current_line(str)
 					return
@@ -91,11 +104,11 @@ function M.override.reform.input(opts, on_confirm)
 		end,
 
 		hist_next = function()
-			if histpos == last + 1 then return end
-			for i = histpos + 1, last do
+			if histPos == last + 1 then return end
+			for i = histPos + 1, last do
 				local str = vim.fn.histget('@', i)
 				if str:find(typed, 1, true) then
-					histpos = i
+					histPos = i
 					histUpdate = true
 					vim.api.nvim_set_current_line(str)
 					return
@@ -113,22 +126,31 @@ function M.override.reform.input(opts, on_confirm)
 		buffer = buf,
 		callback = function()
 			if not histUpdate then
-				histpos = last + 1
+				histPos = last + 1
 			else
 				histUpdate = false
 			end
 			if opts.highlight then opts.highlight(buf) end
 		end,
 	})
+
+	if co then return coroutine.yield() end
 end
 
 function M.override.reform.select(items, opts, on_choice)
-	opts.prompt = opts.prompt and opts.prompt:gsub(': *$', '') or 'Select one of'
+	local co
+	if not on_choice then
+		co = coroutine.running()
+		assert(co, 'run in coroutine.wrap()ped fn or provide callback')
+		on_choice = function(...) coroutine.resume(co, ...) end
+	end
+
+	local prompt = (opts.prompt or 'Select one of'):gsub(': *$', '')
 	opts.format_item = opts.format_item or tostring
 	local callback
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].filetype = 'ui-select'
-	local width = #opts.prompt
+	local width = #prompt
 	local lines = {}
 	for i, item in ipairs(items) do
 		lines[i] = '[' .. i .. '] ' .. opts.format_item(item)
@@ -141,7 +163,7 @@ function M.override.reform.select(items, opts, on_choice)
 
 	M.config.win.select.height = #items
 	M.config.win.select.width = width
-	local win = util.mk_win(buf, M.config.win.select, opts.prompt)
+	local win = util.mk_win(buf, M.config.win.select, prompt)
 	vim.api.nvim_win_set_cursor(win, { 1, 1 })
 	vim.api.nvim_create_autocmd('CursorMoved', {
 		buffer = buf,
@@ -174,6 +196,8 @@ function M.override.reform.select(items, opts, on_choice)
 		function() callback(vim.api.nvim_win_get_cursor(win)[1]) end,
 		{ buffer = buf }
 	)
+
+	if co then return coroutine.yield() end
 end
 
 return M

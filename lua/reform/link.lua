@@ -44,7 +44,7 @@ M.matchers = {
 	},
 	vimdoc_ref = { luapat = '|(%S-)|', use = function(match) return pcall(vim.cmd.help, match) end },
 	stacktrace_file_path = {
-		luapat = '(~?[%w/.@_%-]+:?%d*:?%d*)',
+		luapat = '(~?[%w/.@_%-]+[#(:]?l?i?n?e? ?%d*[:,]?%d*%)?)',
 		use = function(path, matches, ev)
 			local bufdir = vim.api
 				.nvim_buf_get_name(ev.buf)
@@ -57,8 +57,11 @@ M.matchers = {
 				return f ~= nil
 			end
 			local function real(path)
-				local pos = path:match ':.+$' or false
-				if pos then path = path:sub(1, #path - #pos) end
+				local pos = path:match '[:(]l?i?n?e? ?.+$' or false
+				if pos then
+					path = path:sub(1, #path - #pos)
+					pos = pos:gsub('line ', '')
+				end
 				path = path:gsub('^~', os.getenv 'HOME', 1)
 
 				if exists(path) then return path, pos end
@@ -73,7 +76,7 @@ M.matchers = {
 				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
 				local src = { matches.from, matches.to, matches[1] }
 				if not pos and src[2] == #lines[1] and lines[2] then -- next line
-					pos = lines[2]:match '^%s*([%w/._%-]*:?%d+:?%d*)' -- TODO: make this run for OK file
+					pos = lines[2]:match '^%s*([%w/._%-]*[#(:]?l?i?n?e? ?%d+[:,]?%d*%)?)' -- TODO: make this run for OK file
 					path = path .. (pos or '')
 					file, pos = real(path)
 				end
@@ -97,10 +100,15 @@ M.matchers = {
 
 			vim.cmd.e(file)
 			if pos then
-				vim.api.nvim_win_set_cursor(0, {
-					tonumber(pos:gsub('^:(%d+).*$', '%1'), 10),
-					(tonumber(pos:gsub('^:.+:(%d+)$', '%1'), 10) or 1) - 1,
-				})
+				local row, col = pos:match '^[(:](%d+)', pos:match '(%d+)%)?$'
+				row = tonumber(row, 10)
+				col = tonumber(col, 10)
+				if not col or col == 0 then
+					col = 0
+				else
+					col = col - 1
+				end
+				vim.api.nvim_win_set_cursor(0, { row, col })
 			end
 		end,
 	},
@@ -143,7 +151,7 @@ function M.get_git_url(use_default_branch, from, to)
 			branch = f:read '*l'
 		end
 
-		if vim.startswith(branch, '* (HEAD detached at') then
+		if vim.startswith(branch, '* (') then
 			branch = branch:match ' (%S+)%)$'
 			if vim.startswith(branch, 'origin/') then branch = branch:sub(8) end
 		else
@@ -193,7 +201,7 @@ function M.handle(ev)
 		if cfg == 'definition' or ev.mouse then
 			if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end
 			return vim.lsp.buf.definition()
-		elseif type(cfg) ~= 'table' then
+		elseif vim.bo[ev.buf].buftype == 'terminal' or type(cfg) ~= 'table' then
 			return vim.notify 'No link found'
 		end
 	end -- only get git url in visual mode
