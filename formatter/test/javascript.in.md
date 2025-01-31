@@ -1,12 +1,13 @@
-```ts
-config(___...configs: ConfigWithExtends[]___): FlatConfig.ConfigArray```
+```typescript
+(property) config: (...configs: ConfigWithExtends[]) => FlatConfig.ConfigArray
+```
 
 Utility function to make it easy to strictly type your "Flat" config file
 
-**Example**:
-```ts
-// _@ts-check_ —
-import eslint from '@eslint/js';
+_@example_ — ```js
+//
+
+_@ts-check_ — import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -17,4 +18,5 @@ export default tseslint.config(
       '@typescript-eslint/array-type': 'error',
     },
   },
-);```
+);
+```

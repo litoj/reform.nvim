@@ -459,13 +459,14 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case '@': { // format: '_@param_ — name desc'
 				const in *docTmp = doc + 1;
-				while ('a' <= *docTmp && *docTmp <= 'z') docTmp++; // must be a word
+				while (('a' <= *docTmp && *docTmp <= 'z') || *docTmp == '-') docTmp++; // must be a word
 				if (*docTmp != '_' || fmt[-1] != '_' || docTmp[1] != ' ') {
 					*fmt++ = '@';
 					break;
-				} else fmt--;
+				} else fmt--; // replace the preceding '_'
 				doc++;
 				resolveKind(&doc, &fmt, &kind);
+				if (*doc == '_') doc++;
 				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
 				if (kind == 'p' && alike(doc, " — ") > 0) {

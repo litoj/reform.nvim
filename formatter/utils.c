@@ -18,10 +18,11 @@ void resolveKind(const in **docPtr, char **fmtPtr, char *kind) {
 	if (!*kind && !alike(doc, "brief")) *fmt++ = '\n';
 	const char *section;
 	int skip;
-	if ((skip = alike(doc, "param"))) section = "**Parameters:**\n";
-	else if ((skip = alike(doc, "return"))) section = "**Returns:**\n";
-	else if ((skip = alike(doc, "throw"))) section = "**Throws:**\n";
-	else if ((skip = alike(doc, "see"))) section = "**See:**\n";
+	if ((skip = alike(doc, "param"))) section = "Parameters";
+	else if ((skip = alike(doc, "return"))) section = "Returns";
+	else if ((skip = alike(doc, "throw"))) section = "Throws";
+	else if ((skip = alike(doc, "see"))) section = "See";
+	else if ((skip = alike(doc, "example"))) section = "Example";
 	else if ((skip = alike(doc, "ingroup"))) {
 		doc += skip;
 		while (*doc >= ' ') doc++;
@@ -33,20 +34,30 @@ void resolveKind(const in **docPtr, char **fmtPtr, char *kind) {
 		*docPtr = doc + skip;
 		*fmtPtr = fmt;
 		return;
-	} else { // '@other' -> '**Other**:\n'
+	} else { // '@other' -> '**Other**: '
 		*fmt++ = '*';
 		*fmt++ = '*';
+
 		*fmt++ = *kind = *doc++ - 32; // -32 = 'a' -> 'A'
-		while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= 'Z')) *fmt++ = *doc++;
+		while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= 'Z') || *doc == '-')
+			*fmt++ = *doc++;
 		*docPtr = *doc == ' ' ? doc : doc + 1;
+
 		*fmtPtr = append(fmt, "**: ");
 		return;
 	}
-	if (*kind != *doc) fmt = append(fmt, section);
-	*kind = *doc;
+
+	*fmt++ = '*';
+	*fmt++ = '*';
+
+	if (*kind != *doc) {
+		fmt   = append(fmt, section);
+		*kind = *doc;
+	}
 	doc += skip;
 	while (*doc > ' ') doc++;
 	*docPtr = doc;
-	*fmtPtr = fmt;
+
+	*fmtPtr = append(fmt, "**:\n");
 	return;
 }

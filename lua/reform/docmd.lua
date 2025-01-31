@@ -61,12 +61,10 @@ function M.override.reform.convert(doc, contents)
 	then
 	elseif M.config.ft == true or type(M.config.ft) == 'table' and M.config.ft[ft] == true then
 		if type(M.config.debug) == 'string' then
-			local hasFile
 			if M.config.debug:sub(1, 1) == '"' then
-				vim.fn.setreg(M.config.debug:sub(2, 1), str)
+				vim.fn.setreg(M.config.debug:sub(2, 2), str)
 			else
 				local f = io.open(M.config.debug, 'a+')
-				hasFile = f:read '*l'
 				f:write(str)
 				f:close()
 			end
@@ -83,15 +81,11 @@ function M.override.reform.convert(doc, contents)
 					vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
 				end
 			else
-				if not hasFile then
-					io.open(M.config.debug, 'w'):close()
-				else
-					local f = io.open(M.config.debug, 'a')
-					f:write '\nFMT>>>\n'
-					f:write(table.concat(ret, '\n'))
-					f:write '<<<FMT\n'
-					f:close()
-				end
+				local f = io.open(M.config.debug, 'a+')
+				f:write '\nFMT>>>\n'
+				f:write(ret and table.concat(ret, '\n') or 'nil')
+				f:write '\n<<<FMT\n'
+				f:close()
 			end
 
 			if ret then return ret end
@@ -178,7 +172,7 @@ end
 
 function M.default_config.override.cmp_sig(self, sig, idx)
 	local docs = {}
----@diagnostic disable-next-line: undefined-field
+	---@diagnostic disable-next-line: undefined-field
 	if sig.label then docs[1] = ('```\n%s```'):format(self:_signature_label(sig, idx)) end
 	local p = sig.parameters[idx]
 	if p and p.documentation then docs[#docs + 1] = p.documentation.value or p.documentation end

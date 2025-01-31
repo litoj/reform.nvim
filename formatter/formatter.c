@@ -30,8 +30,9 @@ static struct pair {
   p(java),
   {"bash", bash_fmt, "``` man\n"},
   {"sh", bash_fmt, "``` man\n"},
-  {"javascript", typescript_fmt, "```javascript\n"},
-  p(typescript)
+  {"javascript", typescript_fmt, "```typescript\n"},
+  p(typescript),
+  {"javascript", typescript_fmt, "```javascript\n"}
 };
 static const int fmtsN = sizeof(fmts) / sizeof(struct pair);
 
