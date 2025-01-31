@@ -60,7 +60,7 @@ M.matchers = {
 				local pos = path:match '[:(]l?i?n?e? ?.+$' or false
 				if pos then
 					path = path:sub(1, #path - #pos)
-					pos = pos:gsub('line ', '')
+					pos = pos:gsub('l?i?n?e? ', '')
 				end
 				path = path:gsub('^~', os.getenv 'HOME', 1)
 
@@ -72,12 +72,12 @@ M.matchers = {
 			end
 
 			local file, pos = real(path)
-			if not file then
+			if not pos then
 				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
 				local src = { matches.from, matches.to, matches[1] }
 				if not pos and src[2] == #lines[1] and lines[2] then -- next line
 					pos = lines[2]:match '^%s*([%w/._%-]*[#(:]?l?i?n?e? ?%d+[:,]?%d*%)?)' -- TODO: make this run for OK file
-					path = path .. (pos or '')
+					if pos then path = path .. ':' .. pos end
 					file, pos = real(path)
 				end
 				if not path:match '^/home' then
