@@ -2,5 +2,5 @@
 char *cpp_fmt(const in *doc, char *fmt, int len);```
 
 
-**Parameters:**
+**Parameters**:
  - `type`: '>' or ' ' ěřžščéééů.¨)úůč+ířčéň°ůůǒwẘ

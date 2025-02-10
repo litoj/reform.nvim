@@ -47,17 +47,17 @@ void resolveKind(const in **docPtr, char **fmtPtr, char *kind) {
 		return;
 	}
 
-	*fmt++ = '*';
-	*fmt++ = '*';
-
 	if (*kind != *doc) {
-		fmt   = append(fmt, section);
-		*kind = *doc;
+		*fmt++  = '*';
+		*fmt++  = '*';
+		fmt     = append(fmt, section);
+		*fmtPtr = append(fmt, "**:\n");
+
+		*kind   = *doc;
 	}
+
 	doc += skip;
 	while (*doc > ' ') doc++;
 	*docPtr = doc;
-
-	*fmtPtr = append(fmt, "**:\n");
 	return;
 }

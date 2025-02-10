@@ -476,7 +476,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 					*fmt++ = ':';
 					if (alike(doc, " -") > 0) doc += 2;
 				} else if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
-				else if (kind == 'E') {               // example
+				else if (kind == 'E') {               // example -> code block
 					fmt = append(fmt - 1, "\n```ts\n"); // -1 for the appended '**: '
 					while (*doc++ > '\n') {}
 					code_fmt(&doc, &fmt, "```");
