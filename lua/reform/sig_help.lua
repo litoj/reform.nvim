@@ -4,7 +4,7 @@ local M = {
 	override = {
 		set = {},
 		vim = {
-			lsp_sig = vim.lsp.buf.signature_help,
+			lsp_sig = vim.lsp.handlers['textDocument/signatureHelp'],
 			lsc_on_attach = false,
 		},
 		reform = {},
@@ -92,9 +92,10 @@ function M.signature.needs_update(self, sig, content_only)
 	return true
 end
 
-function M.override.reform.lsp_sig(_, sig, ctx, config)
+-- FIXME: doesn't work in nvim 0.11 - buf.sighelp processes now inplace
+function M.override.reform.lsp_sig_handler(_, sig, ctx, config)
 	-- Ignore result since buffer changed. This happens for slow language servers.
-	if vim.api.nvim_get_current_buf() ~= ctx.bufnr then return end
+	if vim.api.nvim_get_current_buf() ~= ctx.bufnr or true then return end
 
 	local update, cursor = M.win:is_valid()
 	if not update then M.win:close() end
@@ -124,7 +125,9 @@ function M.override.reform.lsp_sig(_, sig, ctx, config)
 		vim.bo[M.win.bufnr].modifiable = true
 	end
 
-	if hl then vim.hl.range(M.win.bufnr, -1, 'LspSignatureActiveParameter', 1, unpack(hl)) end
+	if hl then
+		vim.hl.range(M.win.bufnr, -1, 'LspSignatureActiveParameter', { hl[1], hl[2] }, { hl[3], hl[4] })
+	end
 end
 
 function M.override.reform.lsc_on_attach(client, bufnr)

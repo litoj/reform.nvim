@@ -60,7 +60,7 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 							}
 							while (*doc > '\n') *fmt++ = *doc++;
 						}
-						if (separated == 'S') fmt = append(fmt, "```\n");
+						if (separated == 'S') fmt = append(fmt, "\n```\n");
 						else doc--;
 					} else separated = 2;
 					doc--;
@@ -98,9 +98,9 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 					break;
 				}
 
-				int j                    = 0;
+				int j         = 0;
 				const in *tmp = doc;
-				int kind                 = 0;
+				int kind      = 0;
 				// secondary text kind determination
 				if (('A' <= *tmp && *tmp <= 'Z') || ('a' <= *tmp && *tmp <= 'z')) {
 					tmp++;
@@ -119,13 +119,13 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 					for (; *tmp == ' '; tmp++, j++) {}
 
 				// primary text kind determination
-				if (
-				  tmp - doc == 6 // using indent (8) - separation space from desc - last char
-				  || (j >= i + 4 && *tmp > '-' && *tmp != ':') // next line is a continuation of this
+				if (tmp - doc == 6 // using indent (8) - separation space from desc - last char
+				    || (j >= i + 4 && *tmp > '-' && *tmp != ':') // next line is a continuation of this
 				)
 					kind = 'o';
-				else if (tmp - doc < 70 && 'Z' < *doc && *doc < 127 && (j == i // aligned short commands
-						|| (*tmp == '\n' && (*doc < 'a' || 'z' < *doc)))) // single longer command
+				else if (tmp - doc < 70 && 'Z' < *doc && *doc < 127 &&
+				         (j == i                                            // aligned short commands
+				          || (*tmp == '\n' && (*doc < 'a' || 'z' < *doc)))) // single longer command
 					kind = 'c';
 				else if (*tmp <= ' ' || *doc > 127 || (j == i && !kind)) kind = 'p';
 
@@ -141,7 +141,7 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 					if (*doc >= ' ' && doc[1] != ' ' && doc < tmp) { // rest of the option format
 						*fmt++ = *doc++;
 						*fmt++ = '`';
-						while (*doc > ' ' || (doc<tmp && * doc> '\n' && doc[1] != ' ')) *fmt++ = *doc++;
+						while (*doc > ' ' || (doc < tmp && *doc > '\n' && doc[1] != ' ')) *fmt++ = *doc++;
 						fmt = append(fmt, "`:");
 					} else *fmt++ = ':';
 					if (*doc == '\n' && *++doc > '\n') { // description on the next line
@@ -170,7 +170,7 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 						for (j = i; j && *doc == ' '; j--) doc++;
 						while (*doc > '\n') *fmt++ = *doc++;
 					}
-					fmt = append(fmt, "```");
+					fmt = append(fmt, "\n```");
 					doc--;
 				} else if (kind == 'p') { // normal paragraph
 					if (fmt[-2] == '\n' && separated != 2) fmt--;

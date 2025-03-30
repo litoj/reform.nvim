@@ -379,7 +379,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 	code_fmt(&doc, &fmt, "```");
 	doc += 3;
 	while (*--fmt <= ' ') {}
-	fmt = append(fmt + 1, "```\n\n");
+	fmt = append(fmt + 1, "\n```\n\n");
 
 	if (doc >= docEnd) return fmt - 1;
 	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent
@@ -409,7 +409,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 					while (*--fmt <= ' ') {}
 					fmt++;
 					doc += 3;
-					fmt = append(fmt, fmt[-1] == '`' ? "\n```\n" : "```\n\n");
+					fmt = append(fmt, "\n```\n\n");
 				}
 				break;
 				break;
@@ -481,7 +481,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 					while (*doc++ > '\n') {}
 					code_fmt(&doc, &fmt, "```");
 					while (*--fmt <= ' ') {}
-					fmt = append(fmt + 1, "```");
+					fmt = append(fmt + 1, "\n```");
 					return fmt;
 				} else {
 					while (*++doc > ' ') *fmt++ = *doc;

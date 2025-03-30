@@ -11,7 +11,7 @@ char *csharp_fmt(const in *doc, char *fmt, int len) {
 	while (*doc != '`' || doc[1] != '`' || doc[2] != '`') *fmt++ = *doc++;
 	doc += 3;
 	while (*--fmt <= ' ') {}
-	fmt = append(fmt + 1, "```\n\n");
+	fmt = append(fmt + 1, "\n```\n\n");
 
 	if (doc >= docEnd) return fmt - 1;
 	char kind = 0;
@@ -28,7 +28,7 @@ char *csharp_fmt(const in *doc, char *fmt, int len) {
 					while (*doc != '\n') doc++;
 					while (*doc != '`' || doc[1] != '`' || doc[2] != '`') *fmt++ = *doc++;
 					doc += 2;
-					fmt = append(fmt - 1, "```");
+					fmt = append(fmt, "```");
 				} else {
 					*fmt++ = '`';
 					while (*++doc != '`') *fmt++ = *doc;

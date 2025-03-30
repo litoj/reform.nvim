@@ -486,7 +486,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 	code_fmt(&doc, &fmt, "```");
 	doc += 3;
 	while (*--fmt <= ' ') {}
-	fmt = append(fmt + 1, "```\n\n");
+	fmt = append(fmt + 1, "\n```\n\n");
 
 	if (doc >= docEnd) return fmt - 1;
 	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
@@ -512,7 +512,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 					fmt = append(fmt + 1, "\n```vim");
 					doc += 4;
 					while (*doc && (*doc != '<' || doc[-1] != ' ' || doc[-2] != '\n')) *fmt++ = *doc++;
-					fmt = append(fmt - 2, "```\n ");
+					fmt = append(fmt - 2, "\n```\n ");
 				}
 				break;
 			case '`': // code with '```'
@@ -540,7 +540,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 					while (*--fmt <= ' ') {}
 					fmt++;
 					doc += end[0] == '`' ? 3 : 5;
-					fmt = append(fmt, fmt[-1] == '`' ? "\n```\n" : "```\n\n");
+					fmt = append(fmt, "\n```\n\n");
 				}
 				break;
 			case '|': // vim help-page-style links '|text|'

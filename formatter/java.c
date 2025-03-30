@@ -20,7 +20,7 @@ static void java_code_fmt(const in **docPtr, char **fmtPtr, char type) {
 		else *fmt++ = *doc++;
 	}
 	*docPtr = doc - 1;
-	*fmtPtr = append(fmt, "```");
+	*fmtPtr = append(fmt, "\n```");
 }
 
 char *java_fmt(const in *doc, char *fmt, int len) {
@@ -48,7 +48,7 @@ char *java_fmt(const in *doc, char *fmt, int len) {
 			}
 			if (docTmp[-1] == '>') fmt = append(fmt, "class "); // fix TS class `type` highlight
 			while (*doc > '\n') *fmt++ = *doc++;
-			fmt = append(fmt, "```\n");
+			fmt = append(fmt, "\n```\n");
 		}
 	}
 	doc--;

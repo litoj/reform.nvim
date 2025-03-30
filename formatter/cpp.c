@@ -14,10 +14,8 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 		fmt               = append(fmt, "```cpp");
 		const in *docCode = docEnd;
 		while (*docCode != '\n') docCode++;
-		while (*docCode) *fmt++ = *docCode++;
-		fmt[-4] = ';'; // '\n```' -> ';```' to fix syntax highlighting
-		*fmt++  = '\n';
-		if (alike(doc, "###") > 0) { // strip type defs - already in code block
+		fmt = append(fmt, ";\n```\n"); // '\n```' -> ';```' to fix syntax highlighting
+		if (alike(doc, "###") > 0) {   // strip type defs - already in code block
 			while (*++doc != '\n' || *++doc == '-' || *doc == '\n') {}
 			if (alike(doc, "Param") > 0) {
 				while (*++doc != '\n') {}

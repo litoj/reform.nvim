@@ -112,7 +112,7 @@ function M.override.reform.convert(doc, contents)
 		label = M.config.labels[label]
 		if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
 	end
-	return vim.split(str:gsub('\n```', '```'), '\n')
+	return vim.split(str, '\n')
 end
 
 function M.default_config.override.stylize(buf, contents, _)
@@ -123,7 +123,7 @@ end
 
 function M.default_config.override.convert_sig(sig, ft, _)
 	local p = sig.activeParameter
-	-- intentionaly not testing activeSignature range for finding bad lsps
+	-- NOTE: intentionaly not testing activeSignature range for finding bad lsps
 	sig = sig.signatures[(sig.activeSignature or 0) + 1]
 	p = sig.parameters[(sig.activeParameter or p or -1) + 1] -- -1 for signature before arg section
 
@@ -146,6 +146,7 @@ function M.default_config.override.convert_sig(sig, ft, _)
 		kind = 'markdown',
 		value = table.concat(ret, '\n\n'),
 	}
+	print(ret)
 
 	if p then -- determine the active parameter position after conversion
 		local s = ret[2]:find '___'
@@ -157,7 +158,7 @@ function M.default_config.override.convert_sig(sig, ft, _)
 			else
 				ret[2] = ret[2]:gsub('___', '', 1)
 			end
-			return ret, { s - 1, e - 1 }
+			return ret, { 1, s - 1, 1, e - 1 } -- start<line, col>, end<line, col>
 		end
 	end
 
