@@ -4,7 +4,7 @@ local M = {
 	override = {
 		set = {},
 		vim = {
-			lsp_sig = vim.lsp.handlers['textDocument/signatureHelp'],
+			lsp_sig = vim.lsp.buf.signature_help,
 			lsc_on_attach = false,
 		},
 		reform = {},
@@ -15,7 +15,7 @@ local M = {
 		ignore_width_above = 0.8,
 		valid_modes = { i = true, s = true },
 		require_active_param = false,
-		auto_show = true,
+		auto_show = false,
 		win = {
 			border = 'rounded',
 			close_events = { 'BufLeave', 'WinScrolled' },
@@ -124,9 +124,7 @@ function M.override.reform.lsp_sig(_, sig, ctx, config)
 		vim.bo[M.win.bufnr].modifiable = true
 	end
 
-	if hl then
-		vim.api.nvim_buf_add_highlight(M.win.bufnr, -1, 'LspSignatureActiveParameter', 1, unpack(hl))
-	end
+	if hl then vim.hl.range(M.win.bufnr, -1, 'LspSignatureActiveParameter', 1, unpack(hl)) end
 end
 
 function M.override.reform.lsc_on_attach(client, bufnr)
