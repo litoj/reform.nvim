@@ -5,7 +5,8 @@ mpv - a media player
 # SYNOPSIS
 ```sh
 mpv [options] [file|URL|PLAYLIST|-]
-mpv [options] files```
+mpv [options] files
+```
 
 # DESCRIPTION
 
@@ -104,27 +105,32 @@ mpv [options] files```
  - Example mpv config file with profiles
 ```sh
 # normal top-level option
-fullscreen=yes```
+fullscreen=yes
+```
 ```sh
 # a profile that can be enabled with --profile=big-cache
 [big-cache]
 cache=yes
 demuxer-max-bytes=123400KiB
-demuxer-readahead-secs=20```
+demuxer-readahead-secs=20
+```
 ```sh
 [slow]
 profile-desc="some profile name"
 # reference a builtin profile
-profile=gpu-hq```
+profile=gpu-hq
+```
 ```sh
 [fast]
-vo=vdpau```
+vo=vdpau
+```
 ```sh
 # using a profile again extends it
 [slow]
 framedrop=no
 # you can also include other profiles
-profile=big-cache```
+profile=big-cache
+```
 
 **Runtime profiles**
 
@@ -153,7 +159,8 @@ profile=big-cache```
 ```sh
 [something]
 profile-restore=copy-equal
-vf-add=rotate=PI/2  # rotate by 90 degrees```
+vf-add=rotate=PI/2  # rotate by 90 degrees
+```
  - Then running these commands will result in behavior as commented:
 ```sh
 set vf vflip
@@ -162,7 +169,8 @@ vf add hflip
 apply-profile something
 # vf == vflip,rotate=PI/2,hflip,rotate=PI/2
 apply-profile something restore
-# vf == vflip```
+# vf == vflip
+```
 
 **Conditional auto profiles**
 
@@ -175,13 +183,15 @@ apply-profile something restore
 [something]
 profile-desc=HD video sucks
 profile-cond=width >= 1280
-hue=-50```
+hue=-50
+```
  - Make  only  videos  containing *"youtube"* or *"youtu.be"* in their path
    brighter:
 ```sh
 [youtube]
 profile-cond=path:find('youtu%.?be')
-gamma=20```
+gamma=20
+```
  - If you want the profile to be reverted  if  the  condition  goes  to
    false again, you can set profile-restore:
 ```sh
@@ -189,7 +199,8 @@ gamma=20```
 profile-desc=Mess up video when entering fullscreen
 profile-cond=fullscreen
 profile-restore=copy
-vf-add=rotate=PI/2  # rotate by 90 degrees```
+vf-add=rotate=PI/2  # rotate by 90 degrees
+```
  - This appends the rotate filter to the video filter chain when enter‐
    ing fullscreen. When leaving fullscreen, the vf option is set to the
    value  it  had before entering fullscreen. Note that this would also
@@ -199,11 +210,13 @@ vf-add=rotate=PI/2  # rotate by 90 degrees```
 ```sh
 [something]
 profile-cond=fullscreen
-vf-add=@rot:rotate=PI/2```
+vf-add=@rot:rotate=PI/2
+```
 ```sh
 [something-inv]
 profile-cond=not fullscreen
-vf-remove=@rot```
+vf-remove=@rot
+```
  - WARNING:
    Every  time an involved property changes, the condition is evaluated
    again.  If your condition uses p.playback_time for example, the con‐
@@ -237,7 +250,8 @@ vf-remove=@rot```
 ```sh
 [extension.mkv]
 profile-desc="profile for .mkv files"
-vf=vflip```
+vf=vflip
+```
  - The profile name follows the schema type.name, where type can be proto‐
    col  for  the  input/output protocol in use (see `--list-protocols`), and
    extension for the extension of the path of the  currently  played  file
@@ -382,12 +396,14 @@ vf=vflip```
 terminal=no
 force-window=yes
 idle=once
-screenshot-directory=~~desktop/```
+screenshot-directory=~~desktop/
+```
  - The  pseudo-gui  profile  exists  for compatibility. The options in the
    file=pseudo-gui works like in older mpv releases:
 ```sh
 [pseudo-gui]
-player-operation-mode=pseudo-gui```
+player-operation-mode=pseudo-gui
+```
 
 # OPTIONS
 
@@ -455,7 +471,7 @@ player-operation-mode=pseudo-gui```
  **`--audio-channels`**=`<auto-safe|auto|layouts>`:
    - Control which audio  channels  are  output  (e.g.  surround  vs.
      stereo). There are the following possibilities:
-   - 
+   -
    **`--audio-channels`**=`auto-safe`:
      - Use  the system's preferred channel layout. If there is
        none (such as when accessing a hardware device  instead
@@ -463,7 +479,7 @@ player-operation-mode=pseudo-gui```
        might simply accept any layout  and  do  downmixing  on
        their own.
      - This is the default.
-   - 
+   -
    **`--audio-channels`**=`auto`:
      - Send  the  audio device whatever it accepts, preferring
        the audio's original channel layout. Can  cause  issues
@@ -586,7 +602,8 @@ timer = mp.add_periodic_timer(1, function()
     if seconds >= 10 then
         timer:kill()
     end
-end)```
+end)
+```
 
  - **`mp.get_opt(key)`**:
    - Return  a  setting from the `--script-opts` option. It's up to the
@@ -637,10 +654,12 @@ end)```
    missing, false is assumed.
  - For example, this initiates an asynchronous command:
 ```sh
-{ "command": ["screenshot"], "request_id": 123, "async": true }```
+{ "command": ["screenshot"], "request_id": 123, "async": true }
+```
  - And this is the completion:
 ```sh
-{"request_id":123,"error":"success","data":null}```
+{"request_id":123,"error":"success","data":null}
+```
  - By  design,  you  will  not  get  a  confirmation  that the command was
    started. If a command is long running, sending  the  message  will  not
    lead to any reply until much later when the command finishes.
@@ -656,7 +675,8 @@ end)```
    - Example:
 ```sh
 { "command": ["set_property", "pause", true] }
-{ "error": "success" }```
+{ "error": "success" }
+```
 
  - **`set_property_string`**:
    - Alias  for  set_property. Both commands accept native values and
@@ -668,7 +688,8 @@ end)```
 ```sh
 { "command": ["observe_property", 1, "volume"] }
 { "error": "success" }
-{ "event": "property-change", "id": 1, "data": 52.0, "name": "volume" }```
+{ "event": "property-change", "id": 1, "data": 52.0, "name": "volume" }
+```
    - WARNING:
      If  the connection is closed, the IPC client is destroyed in‐
      tion open to make it work.
@@ -679,7 +700,8 @@ end)```
 ```sh
 { "command": ["observe_property_string", 1, "volume"] }
 { "error": "success" }
-{ "event": "property-change", "id": 1, "data": "52.000000", "name": "volume" }```
+{ "event": "property-change", "id": 1, "data": "52.000000", "name": "volume" }
+```
 
 **JSON extensions**
 
@@ -692,10 +714,12 @@ end)```
      number)
  - Example:
 ```sh
-{ objkey = "value\x0A" }```
+{ objkey = "value\x0A" }
+```
  - Is equivalent to:
 ```sh
-{ "objkey": "value\n" }```
+{ "objkey": "value\n" }
+```
  - libdvdcss:
 
    - **`DVDCSS_CACHE`**:

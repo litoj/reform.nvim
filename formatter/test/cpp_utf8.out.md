@@ -1,5 +1,6 @@
 ```cpp
-char *cpp_fmt(const in *doc, char *fmt, int len);```
+char *cpp_fmt(const in *doc, char *fmt, int len);
+```
 
 
 **Parameters**:

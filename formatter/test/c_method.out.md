@@ -1,7 +1,8 @@
 ```cpp
-char *cpp_fmt(const in *doc, char *fmt, int len);```
+char *typescript_fmt(const unsigned char *doc, char *fmt, int len);
+```
 
-C and CPP doxygen parser
+typescript/javascript parser
 
 **Parameters**:
  - `doc`: original markdown

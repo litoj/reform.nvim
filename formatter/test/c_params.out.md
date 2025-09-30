@@ -1,5 +1,6 @@
 ```cpp
-alike(const in *str, ___const char *cmp___) -> int```
+alike(const in *str, ___const char *cmp___) -> int
+```
 
 test if `str` starts with `cmp`
 

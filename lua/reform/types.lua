@@ -1,4 +1,4 @@
----@alias reform.util.WinConfig vim.api.keyset.win_config|{winhl:table<string,string>}
+---@alias reform.util.WinConfig vim.api.keyset.win_config|{winhl:string}
 ---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
 ---@class reform.util.MatchFilter
 ---@field tolerance? {startPost:integer,startPre:integer,endPost:integer,endPre:integer} startPost=if match starts after cursor, how far after (post-cursor) it can start...

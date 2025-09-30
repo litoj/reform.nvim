@@ -4,7 +4,8 @@ CopyQ - Clipboard Manager with Advanced Features
 
 # SYNOPSIS
 ```sh
-copyq [COMMAND]```
+copyq [COMMAND]
+```
 
 # DESCRIPTION
 

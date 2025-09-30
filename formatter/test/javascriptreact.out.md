@@ -1,5 +1,6 @@
 ```ts
-function JSON.stringify(value: any, replacer?: (this: any, key: "", value: any) => any, space?: ""|0.): "" (+1 overload)```
+function JSON.stringify(value: any, replacer?: (this: any, key: "", value: any) => any, space?: ""|0.): "" (+1 overload)
+```
 
 Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
 

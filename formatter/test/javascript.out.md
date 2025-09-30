@@ -1,5 +1,6 @@
 ```ts
-/*property*/ config: (...configs: ConfigWithExtends[]) => FlatConfig.ConfigArray```
+/*property*/ config: (...configs: ConfigWithExtends[]) => FlatConfig.ConfigArray
+```
 
 Utility function to make it easy to strictly type your "Flat" config file
 

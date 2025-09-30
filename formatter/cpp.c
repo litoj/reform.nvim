@@ -3,26 +3,34 @@
 char *cpp_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
-		docEnd = doc + len - 6;
-		while (*docEnd != '`' || docEnd[-1] != '`' || docEnd[-2] != '`') docEnd--;
+		docEnd                    = doc + len - 6;
+		const in *docEndPractical = doc + len - 4; // strip also the newline from \n```$
+		while (!alike(docEnd - 3, "\n```")) docEnd--;
 		if (docEnd[1] == '\n') { // ```\nsome simple text``` - no detailed docs, only signature
 			doc = docEnd + 2;
-			while (*doc != '`' || *++doc != '`' || *++doc != '`') *fmt++ = *doc++;
+			while (doc < docEndPractical) *fmt++ = *doc++;
 			return fmt;
 		}
-		docEnd -= 2; // end before ```
+		docEnd -= 3; // end before ```
 		fmt               = append(fmt, "```cpp");
-		const in *docCode = docEnd;
+		const in *docCode = docEnd + 3;
 		while (*docCode != '\n') docCode++;
+		while (docCode < docEndPractical) *fmt++ = *docCode++;
+		while (fmt[-1] == '\n') fmt--;
 		fmt = append(fmt, ";\n```\n"); // '\n```' -> ';```' to fix syntax highlighting
 		if (alike(doc, "###") > 0) {   // strip type defs - already in code block
-			while (*++doc != '\n' || *++doc == '-' || *doc == '\n') {}
-			if (alike(doc, "Param") > 0) {
-				while (*++doc != '\n') {}
-				while (*++doc != '\n' || *++doc == '-') {}
-			} else if (alike(doc, "Type") > 0) {
-				while (*++doc != '\n') {}
-				doc++;
+			char match = 1;
+			// array of possible prefix matches
+			const char *prefixes[] = {"- `", "---", "Value =", "→", "Param", "Type:"};
+			const int n            = sizeof(prefixes) / sizeof(prefixes[0]);
+			while (match) {
+				while (*doc++ != '\n' || *doc == '\n') {}
+				match = 0;
+				for (int i = 0; i < n; i++)
+					if (alike(doc, prefixes[i]) > 0) {
+						match = 1;
+						break;
+					}
 			}
 			*fmt++ = '\n';
 		}
@@ -41,7 +49,7 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 					fmt = append(fmt, "```cpp");
 					while (*doc != '\n') doc++;
 					while (*doc != '`' || *++doc != '`' || *++doc != '`') *fmt++ = *doc++;
-					fmt = append(fmt - 1, "```");
+					fmt = append(fmt, "```");
 				} else {
 					*fmt++ = '`';
 					while (*++doc != '`') *fmt++ = *doc;
