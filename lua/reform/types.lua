@@ -16,6 +16,8 @@
 ---@field win reform.util.WinConfig default window configuration
 ---@field filter reform.util.MatchFilter default find_match filter/settings - tolerance + sorting
 ---@field mk_win fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
+---@field exists fun(file:string): boolean checks if given file exists
+---@field real_file fun(path:string,bufnr?:integer): string|nil returns real path to the file if file exists relative to cwd or buffer
 ---@field find_match fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
 ---@field apply_matcher fun(matcher:reform.util.Matcher,event?:reform.util.Event):reform.util.Match|false
 ---@field with_mod fun(mod:string,callback:function) run callback when given module is loaded

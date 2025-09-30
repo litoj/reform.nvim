@@ -1,4 +1,7 @@
 ---@diagnostic disable: need-check-nil
+
+local util = require 'reform.util'
+
 ---@type reform.link
 ---@diagnostic disable-next-line: missing-fields
 local M = {
@@ -9,6 +12,7 @@ local M = {
 	},
 }
 M.config = M.default_config
+
 M.matchers = {
 	markdown_url = {
 		luapat = '%[.-%]%((https?://[^)]+)%)',
@@ -31,11 +35,10 @@ M.matchers = {
 	},
 	markdown_file_path = {
 		luapat = '%[.-%]%(([^)]+)%)',
-		use = function(match)
-			local f = io.open(match)
-			if not f then return end
-			f:close()
-			vim.cmd.e(match)
+		use = function(match, matches, ev)
+			local file = util.real_file(match, ev.buf)
+			if not file then return false end
+			vim.cmd.e(file)
 		end,
 	},
 	reform_vimdoc_ref = {
@@ -46,29 +49,14 @@ M.matchers = {
 	stacktrace_file_path = {
 		luapat = '(~?[%w/.@_%-]+[#(:]?l?i?n?e? ?%d*[:,]?%d*%)?)',
 		use = function(path, matches, ev)
-			local bufdir = vim.api
-				.nvim_buf_get_name(ev.buf)
-				:gsub('^term://(.+/)/%d+:.*$', '%1', 1)
-				:gsub('^~', os.getenv 'HOME', 1)
-			local cwd = vim.loop.cwd()
-			local function exists(f)
-				f = io.open(f)
-				if f then f:close() end
-				return f ~= nil
-			end
 			local function real(path)
 				local pos = path:match '[:(]l?i?n?e? ?.+$' or false
 				if pos then
 					path = path:sub(1, #path - #pos)
 					pos = pos:gsub('l?i?n?e? ', '')
 				end
-				path = path:gsub('^~', os.getenv 'HOME', 1)
 
-				if exists(path) then return path, pos end
-				local dir = bufdir .. path
-				if exists(dir) then return dir, pos end
-				dir = cwd:gsub('[^/]+$', path, 1) -- src/ is often in both cwd and path
-				return exists(dir) and dir or nil, pos
+				return util.real_file(path, ev.buf), pos
 			end
 
 			local file, pos = real(path)
@@ -83,7 +71,7 @@ M.matchers = {
 				if not path:match '^/home' then
 					local i = 1
 					while not file and ev.line > i and src[3] and src[1] == 1 do
-						src = {
+						src = { -- read lines above to recontruct the original path
 							vim.api
 								.nvim_buf_get_lines(ev.buf, ev.line - i - 1, ev.line - i, true)[1]
 								:find '(~?[%w/._%-]+)$',
@@ -96,6 +84,8 @@ M.matchers = {
 					end
 				end
 			end
+			-- files without pos but in a similar-looking context -> trim to the actual filename
+			file = file or util.real_file(path:gsub('[:(].*$', ''), ev.buf)
 			if not file then return false end
 
 			vim.cmd.e(file)
@@ -194,9 +184,7 @@ function M.handle(ev)
 		from = ev.line
 		to = nil
 
-		if require('reform.util').find_match(ev, M.config.matchers, M.matchers, M.config.filter) then
-			return
-		end
+		if util.find_match(ev, M.config.matchers, M.matchers, M.config.filter) then return end
 
 		if cfg == 'definition' or ev.mouse then
 			if ev.mouse then vim.api.nvim_win_set_cursor(0, { ev.line, ev.column }) end

@@ -43,6 +43,28 @@ function M.mk_win(buf, opts, prompt)
 	return win
 end
 
+function M.exists(file)
+	local f = io.open(file)
+	if not f then return false end
+	f:close()
+	return true
+end
+function M.real_file(file, bufnr)
+	file = file:gsub('^~', os.getenv 'HOME', 1)
+	if M.exists(file) then return file end
+	if file:sub(1, 1) == '/' then return end -- absolute path not found
+
+	if not bufnr then bufnr = 0 end
+	local bufDir = vim.api.nvim_buf_get_name(bufnr)
+	if bufDir:sub(1, 4) == 'term' then bufDir = bufDir:gsub('^term://(.+/)/%d+:.*$', '%1', 1) end
+	bufDir = bufDir:gsub('^~', os.getenv 'HOME', 1):sub(#vim.loop.cwd() + 2) -- keep the last /
+	local bufRelFile = bufDir:gsub('[^/]+$', file)
+	if M.exists(bufRelFile) then return bufRelFile end
+	-- src/ is often in both cwd and path -> path relative to 1 level above cwd
+	local cwd_1Rel = vim.loop.cwd():gsub('[^/]+$', file)
+	if M.exists(cwd_1Rel) then return cwd_1Rel end
+end
+
 function M.find_match(event, matchers, default, filter)
 	filter = vim.tbl_deep_extend('force', M.filter, filter, event.filter or {})
 	local line = vim.api.nvim_buf_get_lines(event.buf, event.line - 1, event.line, true)[1]
