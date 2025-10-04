@@ -2,7 +2,7 @@
 
 MAKEFLAGS+=j8
 CC:=gcc
-CFLAGS+=-O3
+CFLAGS+=-O3 -flto -march=native
 LDFLAGS:=-fPIC -shared
 SHELL:=/bin/bash
 
