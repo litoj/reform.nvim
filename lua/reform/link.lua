@@ -64,7 +64,7 @@ M.matchers = {
 				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
 				local src = { matches.from, matches.to, matches[1] }
 				if not pos and src[2] == #lines[1] and lines[2] then -- next line
-					pos = lines[2]:match '^%s*([%w/._%-]*[#(:]?l?i?n?e? ?%d+[:,]?%d*%)?)' -- TODO: make this run for OK file
+					pos = lines[2]:match '^%s*([%w/._%-]*[#(:]?l?i?n?e? ?%d+[:,]?%d*%)?)'
 					if pos then path = path .. ':' .. pos end
 					file, pos = real(path)
 				end
@@ -85,7 +85,7 @@ M.matchers = {
 				end
 			end
 			-- files without pos but in a similar-looking context -> trim to the actual filename
-			file = file or util.real_file(path:gsub('[:(].*$', ''), ev.buf)
+			file = file or util.real_file(path:gsub('[:( ].*$', ''), ev.buf)
 			if not file then return false end
 
 			vim.cmd.e(file)
