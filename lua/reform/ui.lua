@@ -36,10 +36,11 @@ local M = {
 M.config = M.default_config
 
 function M.override.reform.input(opts, on_confirm)
+	opts = opts or {}
 	local origDir = vim.uv.cwd()
 	vim.uv.chdir(opts.dir or origDir)
 
-	local co
+	local co -- support for providing input synchronously via coroutines
 	if not on_confirm then
 		co = coroutine.running()
 		assert(co, 'run in coroutine.wrap()ped fn or provide callback')
@@ -50,7 +51,6 @@ function M.override.reform.input(opts, on_confirm)
 	local prompt = (opts.prompt or ''):gsub(':? *$', '')
 
 	local buf = vim.api.nvim_create_buf(false, true)
-	vim.bo[buf].filetype = 'ui-input'
 	local width = math.max(#prompt + 2, #default)
 
 	M.config.win.input.col = -width / 2
@@ -59,6 +59,10 @@ function M.override.reform.input(opts, on_confirm)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
 	vim.cmd.startinsert { bang = true }
+
+	vim.bo[buf].filetype = 'ui-input'
+	local nsName = 'vim.ui.input'
+	local ns = vim.api.nvim_get_namespaces()[nsName] or vim.api.nvim_create_namespace(nsName)
 
 	local typed = default
 	local last = vim.fn.histnr '@'
@@ -80,7 +84,7 @@ function M.override.reform.input(opts, on_confirm)
 
 	vim.api.nvim_create_autocmd('ModeChanged', {
 		buffer = buf,
-		callback = function(state)
+		callback = function(state) -- cancel the window
 			if state.match == 'i:n' then callback() end
 		end,
 	})
@@ -130,7 +134,11 @@ function M.override.reform.input(opts, on_confirm)
 			else
 				histUpdate = false
 			end
-			if opts.highlight then opts.highlight(buf) end
+			if opts.highlight then
+				for _, hi in ipairs(opts.highlight(vim.api.nvim_get_current_line())) do
+					vim.hl.range(buf, ns, hi[3], { 0, hi[1] - 1 }, { 0, hi[2] })
+				end
+			end
 		end,
 	})
 
@@ -138,6 +146,7 @@ function M.override.reform.input(opts, on_confirm)
 end
 
 function M.override.reform.select(items, opts, on_choice)
+	opts = opts or {}
 	local co
 	if not on_choice then
 		co = coroutine.running()
