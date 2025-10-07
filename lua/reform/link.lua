@@ -9,14 +9,30 @@ local M = {
 		unknown = 'definition',
 		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { '', 'gL' } },
 		filter = { tolerance = { startPost = 1, endPre = 1 } },
+		filepos_patterns = {
+			'^[#:(](%d+)[:,](%d+)',
+			'^[#:(](%d+)',
+			'^[^%w/._%-]+line[%s:]*(%d+)',
+			'^%s[%w%s]+line[%s:]*(%d+)',
+		},
 	},
 }
 M.config = M.default_config
 
+M.default_config.matchers = {
+	'markdown_url',
+	'any_url',
+	'markdown_file_uri',
+	'markdown_file_path',
+	'reform_vimdoc_ref',
+	'vimdoc_ref',
+	'stacktrace_file_path',
+	'nvim_plugin',
+}
 M.matchers = {
 	markdown_url = {
 		luapat = '%[.-%]%((https?://[^)]+)%)',
-		use = function(url) vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true }) end,
+		use = vim.ui.open,
 	},
 	any_url = {
 		luapat = '(https?://[%w/#!.:&?=+_%-%%]+)',
@@ -24,7 +40,7 @@ M.matchers = {
 			if vim.o.columns == match.to then
 				url = url .. vim.api.nvim_buf_get_lines(ev.buf, ev.line, ev.line + 1, true)[1]:match '^%S+'
 			end
-			vim.fn.jobstart(("xdg-open '%s'"):format(url), { detach = true })
+			vim.ui.open(url)
 		end,
 	},
 	markdown_file_uri = {
@@ -35,7 +51,7 @@ M.matchers = {
 	},
 	markdown_file_path = {
 		luapat = '%[.-%]%(([^)]+)%)',
-		use = function(match, matches, ev)
+		use = function(match, _, ev)
 			local file = util.real_file(match, ev.buf)
 			if not file then return false end
 			vim.cmd.e(file)
@@ -46,79 +62,59 @@ M.matchers = {
 		use = function(match) return pcall(vim.cmd.help, match) end,
 	},
 	vimdoc_ref = { luapat = '|(%S-)|', use = function(match) return pcall(vim.cmd.help, match) end },
-	stacktrace_file_path = {
-		luapat = '(~?[%w/.@_%-]+[#(:]?l?i?n?e? ?%d*[:,]?%d*%)?)',
+	stacktrace_file_path = { -- match just the path, then find the context
+		luapat = '(~?[%w/.@_%-]+)',
 		use = function(path, matches, ev)
-			local function real(path)
-				local pos = path:match '[:(]l?i?n?e? ?.+$' or false
-				if pos then
-					path = path:sub(1, #path - #pos)
-					pos = pos:gsub('l?i?n?e? ', '')
-				end
+			-- current and next lines
+			local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
+			-- the line+column info may be on the next line -> join them
+			local posStr = (lines[1]:sub(matches.to + 1) or '') .. (lines[2] or '')
 
-				return util.real_file(path, ev.buf), pos
+			local file = util.real_file(path, ev.buf)
+			-- find the real path by joining lines above the cursor
+			local i = 1
+			local src = { matches.from, matches.to, path }
+			while not file and src[1] == 1 and src[3] and ev.line - i > 0 do
+				src = {
+					vim.api
+						.nvim_buf_get_lines(ev.buf, ev.line - i - 1, ev.line - i, true)[1]
+						:find '(~?[%w/._%-]+)$',
+				}
+				if src[3] then
+					path = src[3] .. path
+					file = util.real_file(path, ev.buf)
+					i = i + 1
+				end
 			end
 
-			local file, pos = real(path)
-			if not pos then
-				local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
-				local src = { matches.from, matches.to, matches[1] }
-				if not pos and src[2] == #lines[1] and lines[2] then -- next line
-					pos = lines[2]:match '^%s*([%w/._%-]*[#(:]?l?i?n?e? ?%d+[:,]?%d*%)?)'
-					if pos then path = path .. ':' .. pos end
-					file, pos = real(path)
-				end
-				if not path:match '^/home' then
-					local i = 1
-					while not file and ev.line > i and src[3] and src[1] == 1 do
-						src = { -- read lines above to recontruct the original path
-							vim.api
-								.nvim_buf_get_lines(ev.buf, ev.line - i - 1, ev.line - i, true)[1]
-								:find '(~?[%w/._%-]+)$',
-						}
-						if src[3] then
-							path = src[3] .. path
-							file, pos = real(path)
-							i = i + 1
-						end
-					end
-				end
-			end
-			-- files without pos but in a similar-looking context -> trim to the actual filename
-			file = file or util.real_file(path:gsub('[:( ].*$', ''), ev.buf)
 			if not file then return false end
-
 			vim.cmd.e(file)
-			if pos then
-				local row, col = pos:match '^[(:](%d+)', pos:match '(%d+)%)?$'
-				row = tonumber(row, 10)
+
+			-- extract the line and column info, if available
+			local line, col
+			for _, ptn in ipairs(M.config.filepos_patterns) do
+				line, col = posStr:match(ptn)
+				if line then break end
+			end
+
+			if line then
 				col = tonumber(col, 10)
-				if not col or col == 0 then
+				if not col or col == 0 then -- vim column is 0-indexed
 					col = 0
 				else
 					col = col - 1
 				end
-				vim.api.nvim_win_set_cursor(0, { row, col })
+				vim.api.nvim_win_set_cursor(0, { tonumber(line, 10), col })
 			end
 		end,
 	},
 	nvim_plugin = {
 		luapat = '["\'](%w+[%w_.%-]*/[%w_.%-]+)[\'"]',
-		use = function(url, _, ev)
+		use = function(plugin, _, ev)
 			if not ({ vim = 1, lua = 1, markdown = 1 })[vim.bo[ev.buf].ft] then return false end
-			vim.fn.jobstart(("xdg-open 'https://github.com/%s'"):format(url), { detach = true })
+			vim.ui.open('https://github.com/' .. plugin)
 		end,
 	},
-}
-M.default_config.matchers = {
-	'markdown_url',
-	'any_url',
-	'markdown_file_uri',
-	'markdown_file_path',
-	'reform_vimdoc_ref',
-	'vimdoc_ref',
-	'stacktrace_file_path',
-	'nvim_plugin',
 }
 
 function M.get_git_url(use_default_branch, from, to)
@@ -171,7 +167,7 @@ function M.get_git_url(use_default_branch, from, to)
 end
 
 function M.handle(ev)
-	local from, to = vim.fn.getpos('.')[2], vim.fn.getpos('v')[2]
+	local from, to = vim.fn.getpos('.')[2], vim.fn.getpos('v')[2] ---@type integer,integer|nil
 	if from > to then
 		local tmp = to
 		to = from
@@ -207,7 +203,7 @@ function M.key()
 end
 
 function M.mouse()
-	local data = vim.fn.getmousepos()
+	local data = vim.fn.getmousepos() ---@type reform.util.Event|vim.fn.getmousepos.ret
 	data.mouse = true
 	data.buf = vim.api.nvim_win_get_buf(data.winid)
 	return M.handle(data)

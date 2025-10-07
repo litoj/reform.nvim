@@ -5,6 +5,7 @@
 ---@field sorting? {order:integer,matcher:integer,offset:integer,length:integer}|fun(ev:reform.util.Event,order:integer,matcher:reform.util.Matcher,match:reform.util.Match):integer|false
 ---@class reform.util.Event
 ---@field buf integer
+---@field mouse? boolean whether event/shortcut was caused by mouse (click)
 ---@field line integer
 ---@field column integer
 ---@field filter? reform.util.MatchFilter
@@ -74,6 +75,7 @@
 ---       - 'copy','print' the git link generated for current cursor line
 ---@field filter? reform.util.MatchFilter
 ---@field matchers? reform.util.MatcherList
+---@field filepos_patterns? string[] patterns for file line/column jumping from stacktraces / error messages
 
 ---@class reform.link: reform.Mapping
 ---@field default_config reform.link.Config

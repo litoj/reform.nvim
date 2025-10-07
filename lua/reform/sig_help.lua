@@ -92,7 +92,7 @@ function M.signature.needs_update(self, sig, content_only)
 	return true
 end
 
--- FIXME: doesn't work in nvim 0.11 - buf.sighelp processes now inplace
+-- TODO: doesn't work in nvim 0.11 - buf.sighelp processes now inplace
 function M.override.reform.lsp_sig_handler(_, sig, ctx, config)
 	-- Ignore result since buffer changed. This happens for slow language servers.
 	if vim.api.nvim_get_current_buf() ~= ctx.bufnr or true then return end
