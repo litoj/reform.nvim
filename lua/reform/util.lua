@@ -20,11 +20,13 @@ function M.mk_win(buf, opts, prompt)
 	if opts.height < 1 then opts.height = 1 end
 	if opts.width < 1 then opts.width = 1 end
 	opts.title[2][1] = prompt ~= '' and prompt or '⋯'
-	local winhl = opts.winhl and (',' .. opts.winhl) or ''
-	opts.winhl = nil
+	local winhl = opts.winhl
+	opts.winhl = nil -- not an official window option
 	local win = vim.api.nvim_open_win(buf, true, opts)
 	opts.winhl = winhl
-	vim.wo[win].winhighlight = 'Search:NONE,Pmenu:Normal,MatchParen:NONE' .. winhl
+	print(vim.inspect(opts))
+	vim.wo[win].winhighlight = 'Search:NONE,Pmenu:Normal,MatchParen:NONE'
+		.. (winhl and (',' .. winhl) or '')
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
 	vim.wo[win].cursorcolumn = false
