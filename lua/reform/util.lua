@@ -24,7 +24,6 @@ function M.mk_win(buf, opts, prompt)
 	opts.winhl = nil -- not an official window option
 	local win = vim.api.nvim_open_win(buf, true, opts)
 	opts.winhl = winhl
-	print(vim.inspect(opts))
 	vim.wo[win].winhighlight = 'Search:NONE,Pmenu:Normal,MatchParen:NONE'
 		.. (winhl and (',' .. winhl) or '')
 	vim.wo[win].number = false
