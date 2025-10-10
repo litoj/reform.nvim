@@ -69,17 +69,13 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 		for (; type < typeCnt; type++, len = 0)
 			if ((len = alike(doc, types[type]))) break;
 		doc += len;
-		if (*doc == '?') {
-			fmt = append(fmt, "nil|");
-			doc++;
-		}
 		switch (type) {
 			case 0: // number
 				*fmt++ = '0';
 				*fmt++ = '.';
 				break;
 			case 1: // string
-				if (doc[1] == '=') {
+				if (doc[1] == '=' && (doc[3] == '\'' || doc[3] == '"' || doc[3] == '[')) {
 					doc += 2;
 					add_string(&doc, &fmt);
 					while (*++doc && *doc <= ' ') {}
@@ -97,8 +93,9 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				*fmt++ = '.';
 				break;
 			case 5: // boolean
-				if (doc[1] != '=') fmt = append(fmt, "true|false");
-				else {
+				if (fmt[-1] == '|' || doc[1] != '=' || (doc[3] != 't' && doc[3] != 'f'))
+					fmt = append(fmt, "bool");
+				else { // when the variable has a bool value assigned we skip the type declaration
 					doc += 3;
 					while ('a' <= *doc && *doc <= 'u') *fmt++ = *doc++;
 				}
@@ -143,10 +140,12 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						type_fmt(&doc, &fmt);
 						while (*doc != ']') *fmt++ = *doc++;
 						*fmt++ = *doc++;
-					} else if (alike(doc, "...(too long)...")) {
-						doc += 16;
-						while (*doc && *doc != '}') doc++;
-						fmt = append(fmt, "TooLong");
+					} else if (alike(doc, "...(")) { // number of left out args
+						fmt = append(fmt, "...");
+						doc += 4;
+						while (*++doc != ')') {}
+						doc++;
+						break;
 					} else if (*doc != '}')
 						while (*doc >= '0' && *doc != ':') *fmt++ = *doc++;
 					else break;
@@ -229,18 +228,17 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 				break;
 			default: { // unknown type / value (nil, ...)
-				char *fmtTmp = fmt;
-				int arr      = 0;
+				// char *fmtTmp = fmt;
 				while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
 				       ('.' <= *doc && *doc <= '9')) {
-					if (*doc == ']' && !arr--) break;
-					else if (*doc == '[') arr++;
+					if (*doc == '[') break;
 					*fmt++ = *doc++;
 				}
-				if (doc[1] == '=') { // skip type info and print value only
-					doc += 3;
-					fmt = fmtTmp;
-				}
+				// TODO: when is the type distracting enough?
+				// if (doc[1] == '=') { // skip type info and print value only
+				// 	doc += 3;
+				// 	fmt = fmtTmp;
+				// }
 			}
 		}
 		while (wrap && *doc == ')') {
@@ -251,6 +249,10 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			*fmt++ = *doc++;
 			*fmt++ = *doc++;
 		}
+		if (*doc == '?') {
+			fmt = append(fmt, "|nil");
+			doc++;
+		}
 		if (backTicks && *doc == '`') {
 			doc++;
 			while (*doc == ' ' || *doc == '\n') doc++;
@@ -258,6 +260,12 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 		*docPtr = doc;
 		while (*doc && *doc <= ' ') doc++;
 	} while (*doc == '|');
+
+	if (*doc == '=') { // also include the actual value
+		*fmt++ = ' ';
+		*fmt++ = *doc++;
+		type_fmt(&doc, &fmt);
+	}
 
 	*docPtr = doc;
 	*fmtPtr = fmt;
@@ -610,8 +618,8 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 					char *fmtTmp = fmt - 1;
 					while (fmt0 < fmtTmp && (('a' <= *fmtTmp && *fmtTmp <= 'z') || *fmtTmp == '_')) fmtTmp--;
 					if ('A' <= *++fmtTmp && *fmtTmp <= 'Z' // '\n Example:' -> '\n **Example:**'
-						&& (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n'
-						|| alike((in *) fmtTmp - 2, "\n ") > 0)) {
+					    && (fmtTmp == fmt0 || fmtTmp[-1] == '\n' || doc[1] == '\n' ||
+					        alike((in *) fmtTmp - 2, "\n ") > 0)) {
 						for (int m = fmt - --fmtTmp; m; m--) fmtTmp[m + 2] = fmtTmp[m];
 						*++fmtTmp = '*';
 						*++fmtTmp = '*';
@@ -663,8 +671,8 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
 				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
-           doc[j + 1] == ' ') || // param description
-          alike(doc + j, "• ") > 0) {
+				     doc[j + 1] == ' ') || // param description
+				    alike(doc + j, "• ") > 0) {
 					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
 						doc += indent[0] = j;
 						indent[1] = indent[2] = 0;
