@@ -12,8 +12,7 @@ local M = {
 		filepos_patterns = {
 			'^[#:(](%d+)[:,](%d+)',
 			'^[#:(](%d+)',
-			'^[^%w/._%-]+line[%s:]*(%d+)',
-			'^%s[%w%s]+line[%s:]*(%d+)',
+			'^[^/._@%-]+[%s:]+(%d+)', -- to match also errors in foreign languages
 		},
 	},
 }

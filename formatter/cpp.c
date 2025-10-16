@@ -5,13 +5,17 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
 		docEnd                    = doc + len - 6;
 		const in *docEndPractical = doc + len - 4; // strip also the newline from \n```$
-		while (!alike(docEnd - 3, "\n```")) docEnd--;
+		while (1) {
+			while (*docEnd != '`') docEnd--;
+			if (alike(docEnd - 2, "```") && (docEnd - 3 <= doc || docEnd[-3] == '\n')) break;
+			else docEnd--;
+		}
 		if (docEnd[1] == '\n') { // ```\nsome simple text``` - no detailed docs, only signature
 			doc = docEnd + 2;
 			while (doc < docEndPractical) *fmt++ = *doc++;
 			return fmt;
 		}
-		docEnd -= 3; // end before ```
+		docEnd -= 2; // end before ```
 		fmt               = append(fmt, "```cpp");
 		const in *docCode = docEnd + 3;
 		while (*docCode != '\n') docCode++;
