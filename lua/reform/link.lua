@@ -12,7 +12,8 @@ local M = {
 		filepos_patterns = {
 			'^[#:(](%d+)[:,](%d+)',
 			'^[#:(](%d+)',
-			'^[^/._@%-]+[%s:]+(%d+)', -- to match also errors in foreign languages
+			'^[^/._@%-]+[%s:]+(%d+)$', -- to match also errors in foreign languages
+			'^[^/._@%-]+[%s:]+(%d+):',
 		},
 	},
 }
@@ -196,17 +197,9 @@ function M.handle(ev)
 	if cfg.print then vim.print(link) end
 end
 
-function M.key()
-	local pos = vim.api.nvim_win_get_cursor(0)
-	return M.handle { buf = 0, line = pos[1], column = pos[2] + 1 }
-end
+function M.key() return M.handle(require('reform.util').make_event(false)) end
 
-function M.mouse()
-	local data = vim.fn.getmousepos() ---@type reform.util.Event|vim.fn.getmousepos.ret
-	data.mouse = true
-	data.buf = vim.api.nvim_win_get_buf(data.winid)
-	return M.handle(data)
-end
+function M.mouse() return M.handle(require('reform.util').make_event(true)) end
 
 function M.gen_mapping(bind) return bind[2]:match '[Mm]ouse' and M.mouse or M.key end
 

@@ -13,6 +13,7 @@ local M = {
 	},
 	debug = false,
 }
+
 function M.mk_win(buf, opts, prompt)
 	local mode = vim.api.nvim_get_mode().mode
 	vim.bo[buf].buftype = 'nofile'
@@ -44,12 +45,43 @@ function M.mk_win(buf, opts, prompt)
 	return win
 end
 
+function M.make_event(mouse)
+	if mouse then
+		local m = vim.fn.getmousepos()
+		local buf = vim.api.nvim_win_get_buf(m.winid)
+		return { buf = buf, line = m.line, column = m.column, mouse = true }
+	else
+		local pos = vim.api.nvim_win_get_cursor(0)
+		return { buf = 0, line = pos[1], column = pos[2] + 1 }
+	end
+end
+
+function M.get_visual(accepted_modes)
+	accepted_modes = accepted_modes or { v = true, V = true, [''] = true }
+	if not accepted_modes[vim.api.nvim_get_mode().mode] then return end
+
+	local from, to = vim.fn.getpos '.', vim.fn.getpos 'v'
+	if from[2] > to[2] or from[3] > to[3] then
+		local tmp = to
+		to = from
+		from = tmp
+	end
+
+	return {
+		from[2],
+		from[3],
+		to[2],
+		to[3],
+	}
+end
+
 function M.exists(file)
 	local f = io.open(file)
 	if not f then return false end
 	f:close()
 	return true
 end
+
 function M.real_file(file, bufnr)
 	file = file:gsub('^~', os.getenv 'HOME', 1)
 	if M.exists(file) then return file end

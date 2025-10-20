@@ -1,3 +1,5 @@
+---@meta
+error('Cannot require a meta file')
 ---@alias reform.util.WinConfig vim.api.keyset.win_config|{winhl:string}
 ---@alias reform.util.Match {from:integer,to:integer,[integer]:string} all matched groups + bounds of the entire matched text
 ---@class reform.util.MatchFilter
@@ -6,8 +8,8 @@
 ---@class reform.util.Event
 ---@field buf integer
 ---@field mouse? boolean whether event/shortcut was caused by mouse (click)
----@field line integer
----@field column integer
+---@field line integer lua-indexed (1+)
+---@field column integer lua-indexed (1+)
 ---@field filter? reform.util.MatchFilter
 ---@alias reform.util.Matcher {luapat?:string,vimre?:string,group?:integer,use:fun(match:string,info:reform.util.Match,ev:reform.util.Event):nil|false} returns false for failure, group= lower → higher priority
 ---@alias reform.util.MatcherMap table<string,reform.util.Matcher>
@@ -17,6 +19,8 @@
 ---@field win reform.util.WinConfig default window configuration
 ---@field filter reform.util.MatchFilter default find_match filter/settings - tolerance + sorting
 ---@field mk_win fun(buf:integer,opts:reform.util.WinConfig,prompt:string): integer returns window id
+---@field make_event fun(mouse?:boolean):reform.util.Event creates event from current cursor or mouse position
+---@field get_visual fun(accepted_modes?:table<string,boolean>):Range4|nil get range of live visual selection
 ---@field exists fun(file:string): boolean checks if given file exists
 ---@field real_file fun(path:string,bufnr?:integer): string|nil returns real path to the file if file exists relative to cwd or buffer
 ---@field find_match fun(event:reform.util.Event,matchers:reform.util.MatcherList,knownHandlers:reform.util.MatcherMap,filter:reform.util.MatchFilter):reform.util.Match|false
@@ -154,3 +158,5 @@
 ---@field set_override fun(override:reform.Override.override,cfg:reform.Config.Override.override)
 ---@field set_mapping fun(functions:reform.Mapping,cfg:reform.Config.Mapping.mapping)
 ---@field setup fun(config:reform.Config) setup reform.nvim just the way you like it
+
+-- vim: tw=0

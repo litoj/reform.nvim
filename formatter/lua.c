@@ -66,9 +66,8 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			wrap++;
 			*fmt++ = *doc++;
 		}
-		for (; type < typeCnt; type++, len = 0)
-			if ((len = alike(doc, types[type]))) break;
-		doc += len;
+		while (type < typeCnt && (len = alike(doc, types[type])) <= 0) type++;
+		if (len > 0) doc += len;
 		switch (type) {
 			case 0: // number
 				*fmt++ = '0';
@@ -105,21 +104,24 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					*fmt++ = '{';
 					doc++;
 					if (*doc != '>') {
-						if (alike(doc, "string") > 0) {
+						int len;
+						if ((len = alike(doc, "string, ")) > 0) {
 							doc += 6;
-							fmt = append(fmt,
-							             "[\"\"] ="); // string index -> it's a map/dictionary
-						} else {
-							int len = alike(doc, "integer");
-							if (len > 0 || (len = alike(doc, "number")) > 0) doc += len;
-							else fmt = append(fmt, "[] =");
-						}
-						if (*doc == '>') { // only indexes specified, no field type
-							if (fmt[-1] == '=') *fmt++ = ' ';
-							*fmt++ = '?';
-						} else if (*doc == ',') { // resolve type of field
+							fmt = append(fmt, "[\"\"] = "); // string index -> it's a map/dictionary
+						} else if ((len = alike(doc, "integer, ")) > 0 || (len = alike(doc, "number, ")) > 0)
+							doc += len;
+						else if ((len = alike(doc, "any, ")) > 0) {
+							fmt = append(fmt, "? = ");
+							doc += len;
+						} else fmt = append(fmt, "? = "); // interpret type as value type - no key type
+
+						if (*doc == '>') *fmt++ = '?'; // only indexes specified, no field type
+						else type_fmt(&doc, &fmt);     // resolve type of field
+
+						if (*doc == ',') { // NOTE: this should be never reached
+							fmt = append(fmt, ", Reform.ERROR.unparsed = ");
 							doc++;
-							type_fmt(&doc, &fmt);
+							type_fmt(&doc, &fmt); // resolve type of missed field
 						}
 					}
 					while (*doc && *doc++ != '>') {} // strip all extra useless table data
@@ -130,7 +132,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					*fmt++ = '}';
 				}
 				break;
-			case 7:
+			case 7: // literal table/value definition. Should not really happen
 				*fmt++ = '{';
 				do {
 					if (*doc == ',') *fmt++ = *doc++;
@@ -220,12 +222,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					*fmt++ = *doc++;
 					type_fmt(&doc, &fmt);
 				}
-				*fmt++ = *doc++;
-				if (*doc == '[' && doc[1] == ']') {
-					*fmt++ = '[';
-					*fmt++ = ']';
-					doc += 2;
-				}
+				*fmt++ = *doc++; // should be always >
 				break;
 			default: { // unknown type / value (nil, ...)
 				// char *fmtTmp = fmt;
@@ -245,7 +242,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			wrap--;
 			*fmt++ = *doc++;
 		}
-		if (*doc == '[' && doc[1] == ']') {
+		while (*doc == '[' && doc[1] == ']') {
 			*fmt++ = *doc++;
 			*fmt++ = *doc++;
 		}
