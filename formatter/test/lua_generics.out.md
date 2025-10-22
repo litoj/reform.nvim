@@ -1,5 +1,5 @@
 ```lua
-function vim.tbl_values(t: {? = <T>}) end
+function vim.tbl_values(t = {? = <T>}) end
   -> <T>[]
 ```
 

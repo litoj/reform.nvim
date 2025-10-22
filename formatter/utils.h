@@ -8,7 +8,7 @@ typedef unsigned char in;
  * @param str string to append
  * @return ptr to current `dst` position
  */
-char* append(char* dst, const char* str);
+char *append(char *dst, const char *str);
 
 /**
  * @brief test if `str` starts with `cmp`
@@ -17,7 +17,7 @@ char* append(char* dst, const char* str);
  * @param cmp string to compare against
  * @return length of `cmp` if passed, else `0`
  */
-int alike(const in* str, const char* cmp);
+int alike(const in *str, const char *cmp);
 
 /**
  * @brief Parses current doc kind and adds section header when needed.
@@ -26,5 +26,15 @@ int alike(const in* str, const char* cmp);
  * @param fmtPtr ptr to buffer for formatted docs
  * @param kind kind of previous docs line ('@[]..')
  */
-void resolveKind(const in** docPtr, char** fmtPtr, char* kind);
+void resolveKind(const in **docPtr, char **fmtPtr, char *kind);
+
+#define empty(ch) ((ch) <= ' ' && (ch))
+#define isCONST(ch) (('A' <= (ch) && (ch) <= 'Z') || ('0' <= (ch) && (ch) <= '9') || (ch) == '_')
+/// matches object path (x.y) as well as file path (/x/y.z)
+#define isPath(ch)                                                                                 \
+	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') ||                  \
+	 ('.' <= (ch) && (ch) <= '9'))
+#define isVar(ch)                                                                                  \
+	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') ||                  \
+	 ('0' <= (ch) && (ch) <= '9'))
 #endif
