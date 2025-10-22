@@ -57,6 +57,7 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 			while (empty(*doc)) *fmt++ = *doc++;
 		}
 
+		const in *docTmp = doc;
 		while (isVar(*doc)) *fmt++ = *doc++; // arg name
 		switch (*doc) {
 			case '?':
@@ -72,10 +73,9 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 				fmt = append(fmt, "...");
 				doc += 3;
 				break;
-			default: // probably parsed something that wasn't a param
-				*docPtr = doc;
-				*fmtPtr = fmt;
-				return;
+			default: // there was no var name, it was already the type
+				fmt = fmt - (doc - docTmp);
+				doc = docTmp;
 		}
 		type_fmt(&doc, &fmt);
 		// TODO: can fn params really result in ...Too Long?
@@ -192,7 +192,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 				break;
 
-			case 7: // literal table/value definition. Should not really happen
+			case 7: // literal table/value definition.
 				*fmt++ = '{';
 				do { // TODO: merge with param_fmt()
 					if (*doc == ',') *fmt++ = *doc++;
@@ -200,7 +200,8 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 
 					if (*doc == '[') { // fixed index / complex string index
 						*fmt++ = *doc++;
-						type_fmt(&doc, &fmt);
+						// save fmt time on integer indexes
+						if (*doc < '0' || '9' < *doc) type_fmt(&doc, &fmt);
 						while (*doc != ']') *fmt++ = *doc++;
 						*fmt++ = *doc++;
 					} else if (alike(doc, "...(")) { // number of left out args
@@ -319,6 +320,48 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 	*fmtPtr = fmt;
 }
 
+/// @brief Skips by 9 to get to the function content immediately (to `(`, not over)
+static void callable_fmt(const in **docPtr, char **fmtPtr) {
+	const in *doc = *docPtr;
+	char *fmt     = *fmtPtr;
+
+	fmt           = append(fmt, "function ");
+	doc += 9;
+
+	if (*doc == '(') *fmt++ = '_'; // give a name to unnamed fn (different from anonymous)
+	else
+		while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
+	*fmt++ = *doc++;                                     // append the actual `(`
+
+	param_fmt(&doc, &fmt);
+
+	if (*doc != ')' || alike(doc + 1, " end")) {
+		*docPtr = doc - 1;
+		*fmtPtr = fmt;
+		return;
+	}
+	fmt = append(fmt, ") end");
+
+	if (alike(doc + 1, "\n  ->")) { // ensure we're in the return-type section
+		fmt = append(fmt, "\n  ->");
+		doc += 6;
+
+		const in *docTmp;
+		do {
+			while (*doc >= '.') doc++; // skip return value number `2.`
+			if (doc[-1] == '.') *fmt++ = ',';
+			*fmt++ = *doc++; // add space
+			param_fmt(&doc, &fmt);
+			docTmp = doc;
+			while (empty(*doc)) doc++;
+		} while ('1' <= *doc && *doc <= '9');
+
+		doc = docTmp - 1; // let the newline get parsed normally (or jump back before param_fmt failed)
+	} else doc++;
+	*docPtr = doc;
+	*fmtPtr = fmt;
+}
+
 /**
  * @brief Format code (especially typedefs) segment.
  *
@@ -332,44 +375,11 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 	char *fmt     = *fmtPtr;
 
 	while (!alike(++doc, stop) && *doc) switch (*doc) {
-			case 'f': { // possible function
-				if (doc[-1] != '\n' || (doc[8] != ' ' && doc[8] != '(') ||
-				    !alike(doc + 1, "unction")) { // ensure it is a keyword or anonymous function
-					*fmt++ = 'f';
-					break;
-				}
-				fmt = append(fmt, "function ");
-				doc += 9;
-
-				if (*doc == '(') *fmt++ = '_'; // give a name to unnamed fn (different from anonymous)
-				else
-					while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
-				*fmt++ = *doc++;                                     // append the actual `(`
-
-				param_fmt(&doc, &fmt);
-
-				if (*doc != ')' || alike(doc + 1, " end")) {
-					doc--;
-					break;
-				}
-				fmt = append(fmt, ") end");
-
-				if (!alike(doc + 1, "\n  ->")) break; // continue only if we're in the return-type section
-				fmt = append(fmt, "\n  ->");
-				doc += 6;
-
-				const in *docTmp;
-				do {
-					while (*doc >= '.') doc++; // skip return value number `2.`
-					if (doc[-1] == '.') *fmt++ = ',';
-					*fmt++ = *doc++; // add space
-					param_fmt(&doc, &fmt);
-					docTmp = doc;
-					while (empty(*doc)) doc++;
-				} while ('1' <= *doc && *doc <= '9');
-
-				doc = docTmp - 1; // let the newline get parsed normally (or jump back)
-			} break;
+			case 'f': // check for function keyword (definition or anonymous function
+				if (doc[-1] == '\n' && (doc[8] == ' ' || doc[8] == '(') && alike(doc + 1, "unction"))
+					callable_fmt(&doc, &fmt);
+				else *fmt++ = 'f';
+				break;
 
 			case '[':              // string [[...]]
 				if (doc[1] != '[') { // make sure it's a real string
@@ -526,10 +536,15 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 	fmt              = append(fmt, "```lua\n");
 	doc += 7;
 	if (*doc == '(') {
-		if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
-		doc += 5;
-		while (*++doc != ' ') {}
-		doc++;
+		if (alike(doc + 1, "method)")) {
+			callable_fmt(&doc, &fmt);
+		} else {
+			if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
+
+			doc += 5;
+			while (*doc != ')') doc++;
+			doc += 2;
+		}
 	}
 	code_fmt(&doc, &fmt, "```");
 	doc += 3;
