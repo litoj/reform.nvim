@@ -333,21 +333,20 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 
 	while (!alike(++doc, stop) && *doc) switch (*doc) {
 			case 'f': { // possible function
-				if (!alike(doc - 1, "\nfunction") ||
-				    (doc[8] != ' ' && doc[8] != '(')) { // ensure it is a keyword or anonymous function
+				if (doc[-1] != '\n' || (doc[8] != ' ' && doc[8] != '(') ||
+				    !alike(doc + 1, "unction")) { // ensure it is a keyword or anonymous function
 					*fmt++ = 'f';
 					break;
 				}
+				fmt = append(fmt, "function ");
+				doc += 9;
 
-				while (*doc != '(') *fmt++ = *doc++; // skip to fn definition
-				if (doc[-1] == ' ') *fmt++ = '_';    // give a name to unnamed fn
-				*fmt++ = *doc++;                     // append the actual `(`
+				if (*doc == '(') *fmt++ = '_'; // give a name to unnamed fn (different from anonymous)
+				else
+					while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
+				*fmt++ = *doc++;                                     // append the actual `(`
 
 				param_fmt(&doc, &fmt);
-				// *fmt++ = '!';
-				// *fmt++ = doc[-1];
-				// *fmt++ = doc[0];
-				// *fmt++ = doc[1];
 
 				if (*doc != ')' || alike(doc + 1, " end")) {
 					doc--;
