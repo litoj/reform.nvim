@@ -43,34 +43,45 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 static void type_fmt(const in **docPtr, char **fmtPtr);
 
 /**
- * @brief Format parameter name and type, or a spread parameter
+ * @brief Format parameter/table name/index and type, or `...`
  *
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void param_fmt(const in **docPtr, char **fmtPtr) {
+static void typed_var_fmt(const in **docPtr, char **fmtPtr) {
 	const in *doc = *docPtr;
 	char *fmt     = *fmtPtr;
-	do {                 // parse all args
-		if (*doc == ',') { // arg separator
-			*fmt++ = *doc++;
-			while (empty(*doc)) *fmt++ = *doc++;
-		}
+	do {                                // parse all args
+		if (*doc == ',') *fmt++ = *doc++; // arg separator
+		while (empty(*doc)) *fmt++ = *doc++;
 
 		const in *docTmp = doc;
 		while (isVar(*doc)) *fmt++ = *doc++; // arg name
 		switch (*doc) {
+			case '[': // table fields: fixed index / complex string index
+				*fmt++ = *doc++;
+				while (*doc != ']') *fmt++ = *doc++;
+				*fmt++ = *doc++;   // add the ']'
+				if (*doc != ':') { // no type found
+					fmt = append(fmt, " = ?");
+					break;
+				} // fall through to type def
 			case ':': // arg type
 				doc++;
 				*fmt++ = ' ';
 				*fmt++ = '=';
 				break;
-			case '.': // vararg marker
+
+			case '.':
 				fmt = append(fmt, "...");
 				doc += 3;
-				break;
+				if (*doc == '(') { // table fields: number of left out fields
+					while (*doc++ != ')') {}
+					continue;   // is last if present -> ends the loop
+				} else break; // function: vararg marker
+
 			case '?':
-				if (doc[1] != '\n') { // otherwise a return value with just type - no var name
+				if (doc[1] != '\n') { // function return: let direct type fall through to default
 					fmt = append(fmt, " = nil|");
 					doc += 2;
 					break;
@@ -195,37 +206,11 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 				break;
 
-			case 7: // literal table/value definition.
+			case 7: // { - literal table/value definition.
 				*fmt++ = '{';
-				do { // TODO: merge with param_fmt()
-					if (*doc == ',') *fmt++ = *doc++;
-					while (empty(*doc)) *fmt++ = *doc++;
-
-					if (*doc == '[') { // fixed index / complex string index
-						*fmt++ = *doc++;
-						// save fmt time on integer indexes
-						if (*doc < '0' || '9' < *doc) type_fmt(&doc, &fmt);
-						while (*doc != ']') *fmt++ = *doc++;
-						*fmt++ = *doc++;
-					} else if (alike(doc, "...(")) { // number of left out args
-						fmt = append(fmt, "...");
-						doc += 4;
-						while (*doc++ != ')' && *doc) {}
-						break;
-					} else if (*doc != '}') // TODO: do values without index fall here?
-						while (*doc >= '0' && *doc != ':') *fmt++ = *doc++;
-					else break;
-
-					*fmt++ = ' ';
-					*fmt++ = '=';
-					if (*doc == ':') {
-						doc += 2;
-						type_fmt(&doc, &fmt);
-					} else fmt = append(fmt, " ?");
-				} while (*doc == ',');
-				while (empty(*doc)) *fmt++ = *doc++;
-				if (*doc == '}') doc++;
-				*fmt++ = '}';
+				typed_var_fmt(&doc, &fmt);
+				while (*doc != '}') *fmt++ = *doc++;
+				*fmt++ = *doc++;
 				break;
 
 			case 8: // string value
@@ -252,7 +237,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				break;
 			case 13: // fun():rettype - function with specified args
 				fmt = append(fmt, "fun(");
-				if (*doc != ')') param_fmt(&doc, &fmt);
+				if (*doc != ')') typed_var_fmt(&doc, &fmt);
 				*fmt++ = ')';
 				if (*doc++ == ')' && *doc == ':') { // fn return value
 					if (doc[1] == '.') {
@@ -336,7 +321,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 		while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
 	*fmt++ = *doc++;                                     // append the actual `(`
 
-	param_fmt(&doc, &fmt);
+	typed_var_fmt(&doc, &fmt);
 
 	if (*doc != ')' || alike(doc + 1, " end")) {
 		*docPtr = doc - 1;
@@ -354,7 +339,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 			while (*doc >= '.') doc++; // skip return value number `2.`
 			if (doc[-1] == '.') *fmt++ = ',';
 			*fmt++ = *doc++; // add space
-			param_fmt(&doc, &fmt);
+			typed_var_fmt(&doc, &fmt);
 			docTmp = doc;
 			while (empty(*doc)) doc++;
 		} while ('1' <= *doc && *doc <= '9');
@@ -420,7 +405,7 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 						doc--;
 						fmt--;
 					}
-					param_fmt(&doc, &fmt);
+					typed_var_fmt(&doc, &fmt);
 					doc--;
 				} else *fmt++ = *doc; // TODO: can be a member method call (string:gsub())
 				break;

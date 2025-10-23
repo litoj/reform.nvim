@@ -1,5 +1,5 @@
 ```lua
-behaviour = {
+_G.behaviour = {
     auto_apply_diff_after_generation = false,
     auto_approve_tool_permissions = bool|''[] = true,
     auto_check_diagnostics = true,

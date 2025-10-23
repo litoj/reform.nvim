@@ -1,5 +1,5 @@
 ```lua
-(field) behaviour: {
+(global) behaviour: {
     auto_apply_diff_after_generation: boolean = false,
     auto_approve_tool_permissions: boolean|string[] = true,
     auto_check_diagnostics: boolean = true,
