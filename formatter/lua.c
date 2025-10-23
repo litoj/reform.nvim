@@ -60,10 +60,6 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 		const in *docTmp = doc;
 		while (isVar(*doc)) *fmt++ = *doc++; // arg name
 		switch (*doc) {
-			case '?':
-				fmt = append(fmt, " = nil|");
-				doc += 2;
-				break;
 			case ':': // arg type
 				doc++;
 				*fmt++ = ' ';
@@ -73,11 +69,18 @@ static void param_fmt(const in **docPtr, char **fmtPtr) {
 				fmt = append(fmt, "...");
 				doc += 3;
 				break;
+			case '?':
+				if (doc[1] != '\n') { // otherwise a return value with just type - no var name
+					fmt = append(fmt, " = nil|");
+					doc += 2;
+					break;
+				}
 			default: // there was no var name, it was already the type
 				fmt = fmt - (doc - docTmp);
 				doc = docTmp;
 		}
 		type_fmt(&doc, &fmt);
+
 		// TODO: can fn params really result in ...Too Long?
 		// while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
 
@@ -301,7 +304,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			*fmt++ = *doc++;
 		}
 
-		if (*doc == '?') { // TODO: usually after arg name, not type -> is this ever used?
+		if (*doc == '?') { // in table field declarations lua_lsp recognizes ? only after the type
 			fmt = append(fmt, "|nil");
 			doc++;
 		}
@@ -356,7 +359,9 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 			while (empty(*doc)) doc++;
 		} while ('1' <= *doc && *doc <= '9');
 
-		doc = docTmp - 1; // let the newline get parsed normally (or jump back before param_fmt failed)
+		doc = docTmp[-1] == '\n'
+		  ? docTmp - 1
+		  : docTmp; // let the newline get parsed normally (or jump back before param_fmt failed)
 	} else doc++;
 	*docPtr = doc;
 	*fmtPtr = fmt;

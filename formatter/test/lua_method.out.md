@@ -1,6 +1,6 @@
 ```lua
-function vim.treesitter.LanguageTree:included_regions() end
-  -> {Range6[]}
+function vim.treesitter.LanguageTree:node_for_range(range = Range4, opts = nil|vim.treesitter.LanguageTree.tree_for_range.Opts) end
+  -> TSNode|nil, node_info = { node = TSNode, lang = ''|nil, path = { node = TSNode, lang = ''}}|nil, ''
 ```
 
 Gets the set of included regions managed by this LanguageTree. This can be different from the
