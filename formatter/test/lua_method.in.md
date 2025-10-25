@@ -1,6 +1,6 @@
 ```lua
 (method) vim.treesitter.LanguageTree:node_for_range(range: Range4, opts?: vim.treesitter.LanguageTree.tree_for_range.Opts)
-  -> TSNode?
+  -> vim.api.Test?
   2. node_info: { node: TSNode, lang: string?, path: { node: TSNode, lang: string } }?
   3. string
 ```

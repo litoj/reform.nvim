@@ -1,14 +1,12 @@
 ```lua
-(global) behaviour: {
+(global) behaviour: manipulator.ts.Opts {
     auto_apply_diff_after_generation: boolean = false,
     auto_approve_tool_permissions: boolean|string[] = true,
-    auto_check_diagnostics: boolean = true,
-    auto_focus_on_diff_view: boolean = false,
-    auto_focus_sidebar: boolean = true,
-    auto_set_highlight_group: boolean = true,
-    auto_set_keymaps: boolean = true,
-    auto_suggestions: boolean = false,
-    auto_suggestions_respect_ignore: boolean = false,
+    buf?: integer,
+    depth?: boolean|'leaf'|'leaf-to-root'|'root',
+    lang?: boolean|fun(lang: string):boolean|table<string, boolean>,
+    lang2?: boolean|(fun(lang: string):boolean|table<string, boolean>),
+    range: Range4,
     enable_fastapply: boolean = false,
     ...(+6)
 }

@@ -40,70 +40,7 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-static void type_fmt(const in **docPtr, char **fmtPtr);
-
-/**
- * @brief Format parameter/table name/index and type, or `...`
- *
- * @param docPtr ptr to current pos in source docs
- * @param fmtPtr ptr to buffer for formatted docs
- */
-static void typed_var_fmt(const in **docPtr, char **fmtPtr) {
-	const in *doc = *docPtr;
-	char *fmt     = *fmtPtr;
-	do {                                // parse all args
-		if (*doc == ',') *fmt++ = *doc++; // arg separator
-		while (empty(*doc)) *fmt++ = *doc++;
-
-		const in *docTmp = doc;
-		while (isVar(*doc)) *fmt++ = *doc++; // arg name
-		switch (*doc) {
-			case '[': // table fields: fixed index / complex string index
-				*fmt++ = *doc++;
-				while (*doc != ']') *fmt++ = *doc++;
-				*fmt++ = *doc++;   // add the ']'
-				if (*doc != ':') { // no type found
-					fmt = append(fmt, " = ?");
-					break;
-				} // fall through to type def
-			case ':': // arg type
-				doc++;
-				*fmt++ = ' ';
-				*fmt++ = '=';
-				break;
-
-			case '.':
-				fmt = append(fmt, "...");
-				doc += 3;
-				if (*doc == '(') { // table fields: number of left out fields
-					while (*doc++ != ')') {}
-					continue;   // is last if present -> ends the loop
-				} else break; // function: vararg marker
-
-			case '?':
-				if (doc[1] != '\n') { // function return: let direct type fall through to default
-					fmt = append(fmt, " = nil|");
-					doc += 2;
-					break;
-				}
-			default: // there was no var name, it was already the type
-				fmt = fmt - (doc - docTmp);
-				doc = docTmp;
-		}
-		type_fmt(&doc, &fmt);
-
-		// TODO: can fn params really result in ...Too Long?
-		// while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
-
-		if (alike(doc, "___")) { // param signature markers
-			doc += 3;
-			fmt = append(fmt, "___");
-		}
-	} while (*doc == ',');
-
-	*docPtr = doc;
-	*fmtPtr = fmt;
-}
+static void typed_var_fmt(const in **docPtr, char **fmtPtr);
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -124,7 +61,8 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	do {
 		if (*doc == '|') *fmt++ = *doc++;
-		while (empty(*doc)) doc++;
+		else // do not allow spaces between `|` and types
+			while (empty(*doc)) doc++;
 
 		in backTicks = *doc == '`'; // sometimes type is wrapped in backticks
 		if (backTicks) doc++;
@@ -179,7 +117,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					if (*doc != '>') {
 						int len;
 						if ((len = alike(doc, "string, "))) {
-							doc += 6;
+							doc += len;
 							fmt = append(fmt, "[\"\"] = "); // string index -> it's a map/dictionary
 						} else if ((len = alike(doc, "integer, ")) || (len = alike(doc, "number, ")))
 							doc += len;
@@ -189,13 +127,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						} else fmt = append(fmt, "? = "); // interpret type as value type - no key type
 
 						if (*doc == '>') *fmt++ = '?'; // only indexes specified, no field type
-						else type_fmt(&doc, &fmt);     // resolve type of field
-
-						if (*doc == ',') { // FIXME: remove when enough testing has been done
-							fmt = append(fmt, ", Reform.ERROR.unparsed = ");
-							doc++;
-							type_fmt(&doc, &fmt); // resolve type of missed field
-						}
+						else type_fmt(&doc, &fmt);  // resolve type of field
 					}
 					while (*doc && *doc++ != '>') {} // strip all extra useless table data
 					*fmt++ = '}';
@@ -235,8 +167,8 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			case 12: // function
 				fmt = append(fmt, "fun()");
 				break;
-			case 13: // fun():rettype - function with specified args
-				fmt = append(fmt, "fun(");
+			case 13: {             // fun():rettype - function with specified args
+				fmt             = append(fmt, "fun(");
 				if (*doc != ')') typed_var_fmt(&doc, &fmt);
 				*fmt++ = ')';
 				if (*doc++ == ')' && *doc == ':') { // fn return value
@@ -246,7 +178,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					} else *fmt++ = *doc++;
 					type_fmt(&doc, &fmt);
 				}
-				break;
+			} break;
 
 			case 14: // float
 				*fmt++ = '0';
@@ -262,21 +194,15 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					*fmt++ = ' ';
 					type_fmt(&doc, &fmt);
 				}
+
 				*fmt++ = *doc++; // should be always >
 				break;
 
-			default: { // unknown type / value (nil, ...)
-				// char *fmtTmp = fmt;
+			default: // unknown type / value (nil, ...)
 				while (isPath(*doc)) {
 					if (*doc == '[') break;
 					*fmt++ = *doc++;
 				}
-				// TODO: when is the type distracting enough?
-				// if (doc[1] == '=') { // skip type info and print value only
-				// 	doc += 3;
-				// 	fmt = fmtTmp;
-				// }
-			}
 		}
 
 		while (wrap && *doc == ')') {
@@ -303,6 +229,69 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 		*fmt++ = *doc++;
 		type_fmt(&doc, &fmt);
 	}
+
+	*docPtr = doc;
+	*fmtPtr = fmt;
+}
+
+/**
+ * @brief Format parameter/table name/index and type, or `...`
+ *
+ * @param docPtr ptr to current pos in source docs
+ * @param fmtPtr ptr to buffer for formatted docs
+ */
+static void typed_var_fmt(const in **docPtr, char **fmtPtr) {
+	const in *doc = *docPtr;
+	char *fmt     = *fmtPtr;
+	do {                                // parse all args
+		if (*doc == ',') *fmt++ = *doc++; // arg separator
+		while (empty(*doc)) *fmt++ = *doc++;
+
+		const in *docTmp = doc;
+		while (isVar(*doc) || (*doc == '.' && doc[1] != '.')) *fmt++ = *doc++; // arg name
+		switch (*doc) {
+			case '[': // table fields: fixed index / complex string index
+				*fmt++ = *doc++;
+				while (*doc != ']') *fmt++ = *doc++;
+				*fmt++ = *doc++;   // add the ']'
+				if (*doc != ':') { // no type found
+					fmt = append(fmt, " = ?");
+					break;
+				} // fall through to type def
+			case ':': // arg type
+				doc++;
+				*fmt++ = ' ';
+				*fmt++ = '=';
+				break;
+
+			case '.':
+				fmt = append(fmt, "...");
+				doc += 3;
+				if (*doc == '(') { // table fields: number of left out fields
+					while (*doc++ != ')') {}
+					continue;   // is last if present -> ends the loop
+				} else break; // function: vararg marker
+
+			case '?':
+				if (doc[1] != '\n') { // function return: let direct type fall through to default
+					fmt = append(fmt, " = nil|");
+					doc += 2;
+					break;
+				}
+			default: // there was no var name, it was already the type
+				fmt = fmt - (doc - docTmp);
+				doc = docTmp;
+		}
+		type_fmt(&doc, &fmt);
+
+		// TODO: can fn params really result in ...Too Long?
+		// while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
+
+		if (alike(doc, "___")) { // param signature markers
+			doc += 3;
+			fmt = append(fmt, "___");
+		}
+	} while (*doc == ',');
 
 	*docPtr = doc;
 	*fmtPtr = fmt;
