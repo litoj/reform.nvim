@@ -21,7 +21,7 @@ local M = {
 		},
 		labels = { cs = 'c_sharp' },
 		ft = true, -- TODO: set to formatters → export fmt fn per lang all in table
-		debug = false,
+		debug = '/tmp/reform.dbg',
 	},
 }
 M.config = M.default_config
@@ -60,37 +60,37 @@ function M.override.reform.convert(doc, contents)
 		and str:find('\n```', 4, true) == #str - 3 -- no code blocks in between
 	then
 	elseif M.config.ft == true or type(M.config.ft) == 'table' and M.config.ft[ft] == true then
-		if type(M.config.debug) == 'string' then
-			if M.config.debug:sub(1, 1) == '"' then
+		if M.config.debug then
+			if M.config.debug:sub(1, 1) == '"' then -- copy to register [2]
 				vim.fn.setreg(M.config.debug:sub(2, 2), str)
-			else
-				local f = io.open(M.config.debug, 'a+')
-				f:write(str)
-				f:close()
+			else -- write input to file
+				if require('reform.util').exists(M.config.debug) then -- preserve
+					M.config.debug = false
+				else
+					local f = io.open(M.config.debug, 'a+')
+					f:write(str)
+					f:close()
+				end
 			end
 
 			local ret = require 'reform.formatter'(str, ft)
 
-			if M.config.debug:sub(1, 1) == '"' then
-				if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
-					vim.fn.setreg(
-						M.config.debug:sub(2, 2),
-						str .. '\n\n>>>\n\n' .. (ret and table.concat(ret, '\n') or 'nil')
-					)
-				else
-					vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
+			if M.config.debug then
+				if M.config.debug:sub(1, 1) == '"' then --
+					if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
+						vim.fn.setreg(
+							M.config.debug:sub(2, 2),
+							str .. '\n\n>>>\n\n' .. (ret and table.concat(ret, '\n') or 'nil')
+						)
+					else
+						vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
+					end
+				elseif require('reform.util').exists(M.config.debug) then
+					vim.fs.rm(M.config.debug) -- delete input file if nothing went wrong
 				end
-			else
-				local f = io.open(M.config.debug, 'a+')
-				f:write '\nFMT>>>\n'
-				f:write(ret and table.concat(ret, '\n') or 'nil')
-				f:write '\n<<<FMT\n'
-				f:close()
 			end
 
 			if ret then return ret end
-		elseif M.config.debug then
-			vim.notify(str)
 		end
 		local ret = require 'reform.formatter'(str, ft)
 		if ret then return ret end

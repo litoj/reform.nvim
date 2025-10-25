@@ -60,7 +60,7 @@ require'reform'.setup {
     },
     labels = {cs = 'c_sharp'}, -- fixes of md ft labels for file previews
     no_preview = {csharp = true}, -- always parse docs with these code labels
-    debug = false|'', -- filename/'"io' for input+output save to register(s) or true to print src
+    debug = '/tmp/reform.dbg', -- filename/'"io' for I+O save to register(s) or false to disable
   },
   ui = true|{ -- vim.ui.input (used in vim.lsp.buf.rename)
     win = {
