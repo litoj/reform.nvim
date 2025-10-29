@@ -327,7 +327,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 	fmt = append(fmt, ") end");
 
 	if (alike(doc + 1, "\n  ->")) { // ensure we're in the return-type section
-		fmt = append(fmt, "\n  ->");
+		fmt = append(fmt, "\n  =->");
 		doc += 6;
 
 		const in *docTmp;

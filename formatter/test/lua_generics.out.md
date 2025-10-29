@@ -1,6 +1,6 @@
 ```lua
 function vim.tbl_values(t = {? = <T>}) end
-  -> <T>[]
+  =-> <T>[]
 ```
 
  Return a list of all values used in a table.
