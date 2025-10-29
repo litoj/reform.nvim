@@ -40,7 +40,7 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 	*fmtPtr = fmt;
 }
 
-static void typed_var_fmt(const in **docPtr, char **fmtPtr);
+static void typed_identifier_fmt(const in **docPtr, char **fmtPtr);
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -127,7 +127,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						} else fmt = append(fmt, "? = "); // interpret type as value type - no key type
 
 						if (*doc == '>') *fmt++ = '?'; // only indexes specified, no field type
-						else type_fmt(&doc, &fmt);  // resolve type of field
+						else type_fmt(&doc, &fmt);     // resolve type of field
 					}
 					while (*doc && *doc++ != '>') {} // strip all extra useless table data
 					*fmt++ = '}';
@@ -140,7 +140,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 
 			case 7: // { - literal table/value definition.
 				*fmt++ = '{';
-				typed_var_fmt(&doc, &fmt);
+				typed_identifier_fmt(&doc, &fmt);
 				while (*doc != '}') *fmt++ = *doc++;
 				*fmt++ = *doc++;
 				break;
@@ -167,9 +167,9 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 			case 12: // function
 				fmt = append(fmt, "fun()");
 				break;
-			case 13: {             // fun():rettype - function with specified args
-				fmt             = append(fmt, "fun(");
-				if (*doc != ')') typed_var_fmt(&doc, &fmt);
+			case 13: { // fun():rettype - function with specified args
+				fmt = append(fmt, "fun(");
+				if (*doc != ')') typed_identifier_fmt(&doc, &fmt);
 				*fmt++ = ')';
 				if (*doc++ == ')' && *doc == ':') { // fn return value
 					if (doc[1] == '.') {
@@ -240,7 +240,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void typed_var_fmt(const in **docPtr, char **fmtPtr) {
+static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 	const in *doc = *docPtr;
 	char *fmt     = *fmtPtr;
 	do {                                // parse all args
@@ -251,6 +251,13 @@ static void typed_var_fmt(const in **docPtr, char **fmtPtr) {
 		while (isVar(*doc) || (*doc == '.' && doc[1] != '.')) *fmt++ = *doc++; // arg name
 		switch (*doc) {
 			case '[': // table fields: fixed index / complex string index
+
+				if (doc[1] == ']') { // not an index, but an array type (`string[]` etc.)
+					fmt = fmt - (doc - docTmp);
+					doc = docTmp;
+					break;
+				}
+
 				*fmt++ = *doc++;
 				while (*doc != ']') *fmt++ = *doc++;
 				*fmt++ = *doc++;   // add the ']'
@@ -310,7 +317,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 		while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
 	*fmt++ = *doc++;                                     // append the actual `(`
 
-	typed_var_fmt(&doc, &fmt);
+	typed_identifier_fmt(&doc, &fmt);
 
 	if (*doc != ')' || alike(doc + 1, " end")) {
 		*docPtr = doc - 1;
@@ -328,7 +335,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 			while (*doc >= '.') doc++; // skip return value number `2.`
 			if (doc[-1] == '.') *fmt++ = ',';
 			*fmt++ = *doc++; // add space
-			typed_var_fmt(&doc, &fmt);
+			typed_identifier_fmt(&doc, &fmt);
 			docTmp = doc;
 			while (empty(*doc)) doc++;
 		} while ('1' <= *doc && *doc <= '9');
@@ -394,7 +401,7 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 						doc--;
 						fmt--;
 					}
-					typed_var_fmt(&doc, &fmt);
+					typed_identifier_fmt(&doc, &fmt);
 					doc--;
 				} else *fmt++ = *doc; // TODO: can be a member method call (string:gsub())
 				break;
