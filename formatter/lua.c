@@ -67,15 +67,13 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr);
  * @param fmtPtr ptr to buffer for formatted docs
  */
 static void type_fmt(const in **docPtr, char **fmtPtr) {
-	static const char *types[] = {
-	  "number", "string", "any", "unknown", "integer",  "boolean", "table", "{",
-	  "'",      "[[",     "\"",  "[",       "function", "fun(",    "float", "<",
-	};
-	static const int typeCnt = sizeof(types) / sizeof(const in *);
+	static const char *types[] = {"number",   "string", "any",   "unknown", "integer", "boolean",
+	                              "table",    "{",      "'",     "[[",      "\"",      "[",
+	                              "function", "fun(",   "float", "<",       "("};
+	static const int typeCnt   = sizeof(types) / sizeof(const in *);
 
-	const in *doc            = *docPtr;
-	char *fmt                = *fmtPtr;
-	int wrap                 = 0;
+	const in *doc              = *docPtr;
+	char *fmt                  = *fmtPtr;
 	if (fmt[-1] == '=' || fmt[-1] == ',') *fmt++ = ' ';
 	do {
 		if (*doc == '|') *fmt++ = *doc++;
@@ -84,11 +82,6 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 
 		in backTicks = *doc == '`'; // sometimes type is wrapped in backticks
 		if (backTicks) doc++;
-
-		while (*doc == '(') { // other times, it is wrapped in ()
-			wrap++;
-			*fmt++ = *doc++;
-		}
 
 		int type = 0, len = 0;
 		while (type < typeCnt && !(len = alike(doc, types[type]))) type++;
@@ -216,6 +209,12 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				*fmt++ = *doc++; // should be always >
 				break;
 
+			case 16: // wrapped in ()
+				*fmt++ = '(';
+				type_fmt(&doc, &fmt);
+				*fmt++ = *doc++; // ')'
+				break;
+
 			default: // unknown type / value (nil, ...)
 				while (isPath(*doc)) {
 					if (*doc == '[') break;
@@ -229,9 +228,8 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 
 		if (*doc == '.' && doc[1] == '.' && doc[2] == '.') elipsis(&doc, &fmt);
 
-		while ((*doc == '[' && doc[1] == ']') || (wrap && *doc == ')')) {
-			if (*doc == ')') wrap--; // finish a layer of a wrap (for return type vs count etc.)
-			else *fmt++ = *doc++;    // or annotate an array type
+		while (*doc == '[' && doc[1] == ']') { // annotate an array type
+			*fmt++ = *doc++;
 			*fmt++ = *doc++;
 		}
 
