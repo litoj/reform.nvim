@@ -40,6 +40,24 @@ static void add_string(const in **docPtr, char **fmtPtr) {
 	*fmtPtr = fmt;
 }
 
+/**
+ * @brief Parse elipsis code occurence and determine meaning.
+ *
+ * @param docPtr ptr to current pos in source docs
+ * @param fmtPtr ptr to buffer for formatted docs
+ * @return if elipsis indicates end of values for the current block or just a vararg marker
+ */
+static _Bool elipsis(const in **docPtr, char **fmtPtr) {
+	*fmtPtr = append(*fmtPtr, "...");
+	*docPtr += 3;
+	if (**docPtr == '(') { // table fields: number of left out fields
+		const in *doc = *docPtr;
+		while (*doc++ != ')') {}
+		*docPtr = doc;
+		return 1;      // is last if present -> ends the loop
+	} else return 0; // function: vararg marker
+}
+
 static void typed_identifier_fmt(const in **docPtr, char **fmtPtr);
 
 /**
@@ -203,15 +221,17 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 					if (*doc == '[') break;
 					*fmt++ = *doc++;
 				}
+				if (fmt[-1] == '.') { // get back before the elipsis
+					fmt -= 3;
+					doc -= 3;
+				}
 		}
 
-		while (wrap && *doc == ')') {
-			wrap--;
-			*fmt++ = *doc++;
-		}
+		if (*doc == '.' && doc[1] == '.' && doc[2] == '.') elipsis(&doc, &fmt);
 
-		while (*doc == '[' && doc[1] == ']') {
-			*fmt++ = *doc++;
+		while ((*doc == '[' && doc[1] == ']') || (wrap && *doc == ')')) {
+			if (*doc == ')') wrap--; // finish a layer of a wrap (for return type vs count etc.)
+			else *fmt++ = *doc++;    // or annotate an array type
 			*fmt++ = *doc++;
 		}
 
@@ -271,13 +291,9 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 				*fmt++ = '=';
 				break;
 
-			case '.':
-				fmt = append(fmt, "...");
-				doc += 3;
-				if (*doc == '(') { // table fields: number of left out fields
-					while (*doc++ != ')') {}
-					continue;   // is last if present -> ends the loop
-				} else break; // function: vararg marker
+			case '.': // we know it's an elipsis from the loop before
+				if (elipsis(&doc, &fmt)) continue;
+				else break;
 
 			case '?':
 				if (doc[1] != '\n') { // function return: let direct type fall through to default

@@ -7,6 +7,7 @@
     lang?: boolean|fun(lang: string):boolean|table<string, boolean>,
     lang2?: boolean|(fun(lang: string):boolean|table<string, boolean>),
     range: Range4,
+    filter: (fun(state: manipulator.ts.sibling.State, return_reason: 'ancestor_diff'|'lvl_diff'|'max_ancestor'|'max_skip'|test...(+1)):boolean)?,
     enable_fastapply: boolean = false,
     ...(+6)
 }

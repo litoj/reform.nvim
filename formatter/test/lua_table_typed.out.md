@@ -7,6 +7,7 @@ _G.behaviour = manipulator.ts.Opts{
     lang = nil|bool|fun(lang = ''):bool|{[""] = bool},
     lang2 = nil|bool|(fun(lang = ''):bool|{[""] = bool}),
     range = Range4,
+    filter = (fun(state = manipulator.ts.sibling.State, return_reason = 'ancestor_diff'|'lvl_diff'|'max_ancestor'|'max_skip'|test...):bool)|nil,
     enable_fastapply = false,
     ...
 }

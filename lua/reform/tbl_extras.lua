@@ -75,21 +75,22 @@ function M.tbl_cut_depth(tbl, opts)
 	return copy
 end
 
-function M.tbl_print(tbl)
+function M.tbl_print(tbl, loglevel)
 	tbl = vim.inspect(tbl)
-	vim.schedule(function() vim.notify(tbl) end)
+	vim.schedule(function() vim.notify(tbl, loglevel or vim.log.levels.INFO) end)
 end
 
 --- global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
+--- table printer arg parsing: [1]={}, [2]=number, [3]=vim.log.levels
 function M.override.reform.print(...)
 	local bundled = { ... }
 	local x, y = bundled[1], bundled[2]
 	if type(x) ~= 'table' then
 		M.override.vim.print(...)
 	elseif type(y) == 'table' then
-		M.tbl_print(M.tbl_diff({}, x, y, ...) or {})
+		M.tbl_print(M.tbl_diff({}, ...) or {})
 	elseif y == nil or type(y) == 'number' then
-		M.tbl_print(M.tbl_cut_depth(x, { depth = y }))
+		M.tbl_print(M.tbl_cut_depth(x, { depth = y }), bundled[3])
 	end
 end
 

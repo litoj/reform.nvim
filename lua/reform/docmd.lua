@@ -146,7 +146,6 @@ function M.default_config.override.convert_sig(sig, ft, _)
 		kind = 'markdown',
 		value = table.concat(ret, '\n\n'),
 	}
-	print(ret)
 
 	if p then -- determine the active parameter position after conversion
 		local s = ret[2]:find '___'
