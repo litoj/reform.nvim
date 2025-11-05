@@ -26,3 +26,7 @@ Returns the elements from the given `list`. This function is equivalent to
 @*param* `t` — (table) Table
 
 @*return* — : List of values
+
+@*return* — event containing info about the active range
+
+@*return* `is_visual` — true if the range is from visual mode

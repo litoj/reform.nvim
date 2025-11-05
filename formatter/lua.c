@@ -695,25 +695,22 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				resolveKind(&doc, &fmt, &kind);
 				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
-				if (kind == 'r') {     // '@return'
-					if (*++doc == '`') { // fixing word wrapped as variable name
-						while (*++doc != '`') *fmt++ = *doc;
-						if (alike(doc, "` — ")) doc += 4;
-						else { // if no description, go to next line
-							while (*++doc > '\n') *fmt++ = *doc;
-							doc--;
-						}
-					} else doc += 2;
-					indent[2] += doc - docTmp - 2;
-				} else {
-					while (*++doc > ' ') *fmt++ = *doc;
-					if (alike(doc, " —")) {
-						doc += 4;
-						*fmt++ = ':';
-					}
-					while (*doc == ' ') *fmt++ = *doc++;
-					indent[2] += --doc - docTmp - 3;
+
+				if (doc[1] == '`') { // varname
+					doc++;
+					while (*doc > ' ') *fmt++ = *doc++;
 				}
+
+				if (alike(doc, " —")) { // separation from comment
+					doc += 4;
+					if (fmt[-2] != '-') *fmt++ = ':'; // there was no varname, so skip spaces
+					else doc++;
+					if (*doc == ':') doc += 2; // desc with special char is a leftover from retval name
+				}
+
+				while (*doc == ' ') *fmt++ = *doc++;
+				indent[2] += --doc - docTmp - 3;
+
 				if (kind) {
 					indent[0] = 1; // we don't know the type so we can't adjust text indent properly
 					indent[1] = 0;

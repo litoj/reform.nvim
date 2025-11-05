@@ -13,4 +13,6 @@ Returns the elements from the given `list`. This function is equivalent to
 **Parameters**:
  - `t`: (table) Table
 **Returns**:
- -  : List of values
+ - List of values
+ - event containing info about the active range
+ - `is_visual`: true if the range is from visual mode
