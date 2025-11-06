@@ -119,17 +119,18 @@ char *bash_fmt(const in *doc, char *fmt, int len) {
 					for (; *tmp == ' '; tmp++, j++) {}
 
 				// primary text kind determination
-				if (tmp - doc == 6 // using indent (8) - separation space from desc - last char
-				    || (j >= i + 4 && *tmp > '-' && *tmp != ':') // next line is a continuation of this
+				if (
+				  tmp - doc == 6 // using indent (8) - separation space from desc - last char
+				  || (j >= i + 4 && *tmp > '-' && *tmp != ':') // next line is a continuation of this
 				)
 					kind = 'o';
 				else if (tmp - doc < 70 && 'Z' < *doc && *doc < 127 &&
-				         (j == i                                            // aligned short commands
+				         (j == i // aligned short commands
 				          || (*tmp == '\n' && (*doc < 'a' || 'z' < *doc)))) // single longer command
 					kind = 'c';
 				else if (*tmp <= ' ' || *doc > 127 || (j == i && !kind)) kind = 'p';
 
-				if (kind == 'o') {            // - **`option`** `extras`: Description
+				if (kind == 'o') { // - **`option`** `extras`: Description
 					if (!optlvl) optlvl = ilvl; // ↑ j == indent[ilvl+1] // first option won't appear
 					j               = 2 + (i = ilvl * 2 - 1);
 					char *lineStart = fmt;

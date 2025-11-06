@@ -185,9 +185,9 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 	// int object    = 0; // are we inside object definition ({})
 	while (!alike(++doc, stop) && *doc) {
 		switch (*doc) {
-			case '"':  // string "..."
+			case '"': // string "..."
 			case '\'': // string '...'
-			case '`':  // string '...'
+			case '`': // string '...'
 				add_string(&doc, &fmt);
 				break;
 			case '{':
@@ -476,7 +476,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 					*fmt++ = ':';
 					if (alike(doc, " -") > 0) doc += 2;
 				} else if (alike(doc, " —") > 0 && (doc += 4)[1] == '-') doc += 3;
-				else if (kind == 'E') {               // example -> code block
+				else if (kind == 'E') { // example -> code block
 					fmt = append(fmt - 1, "\n```ts\n"); // -1 for the appended '**: '
 					while (*doc++ > '\n') {}
 					code_fmt(&doc, &fmt, "```");
@@ -503,14 +503,14 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 				if (alike(++doc, "---\n") > 0) doc += 4;
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
-				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') && doc[j + 1] == ' '
-				    ) || // param description
+				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
+				     doc[j + 1] == ' ') || // param description
 				    alike(doc + j, "• ") > 0) {
 					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
 						doc += indent[0] = j;
 						indent[1] = indent[2] = 0;
 					} else if (indent[1] && j > indent[1]) doc += indent[1] - 2; // align to 2nd lvl
-					else doc += (indent[1] = j) - 2;                             // 2nd lvl indent
+					else doc += (indent[1] = j) - 2; // 2nd lvl indent
 					*fmt++ = ' ';
 					while (*doc++ == ' ') *fmt++ = ' ';
 					*fmt++ = '-';
@@ -519,7 +519,7 @@ char *typescript_fmt(const in *doc, char *fmt, int len) {
 						doc += 2;
 						if (!indent[1]) indent[0] += 2; // `• {}` extra, 2nd lvl is adjusted to that
 					}
-					param_fmt(&doc, &fmt);                  // format param entry
+					param_fmt(&doc, &fmt); // format param entry
 				} else if (indent[0] && j >= indent[0]) { // wrapped text alignment
 					if (indent[1] && j >= indent[1]) doc += indent[1] - 2;
 					else if (!indent[1] && indent[2] && j >= indent[2])

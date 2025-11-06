@@ -36,7 +36,7 @@ char *java_fmt(const in *doc, char *fmt, int len) {
 			const in *docTmp = doc + 2;
 			while (*docTmp > '\n' && cont >= 0) {
 				switch (*docTmp++) {
-					case '(':                         // will get here only if '<' was found
+					case '(': // will get here only if '<' was found
 						fmt  = append(fmt, "default "); // any method keyword for TS to recognize method
 						cont = -1;
 						break;
@@ -77,9 +77,9 @@ char *java_fmt(const in *doc, char *fmt, int len) {
 					// sections are 1.st level indent as lists
 					if (doc[1] == '*' && doc[2] == '*') {
 						if (!kind) *fmt++ = '\n'; // separate start of first found section
-						kind = doc[3] + 32;       // record current section type
+						kind = doc[3] + 32; // record current section type
 					} else fmt = append(fmt, " - ");
-				} else {         // add half the identation (we use 2, java 4)
+				} else { // add half the identation (we use 2, java 4)
 					i = i / 2 - 2; // -2: indent/list depth <<1; list indent >= 1
 					while (--i > 0) *fmt++ = ' ';
 					fmt = append(fmt, " - ");

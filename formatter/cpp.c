@@ -22,7 +22,7 @@ char *cpp_fmt(const in *doc, char *fmt, int len) {
 		while (docCode < docEndPractical) *fmt++ = *docCode++;
 		while (fmt[-1] == '\n') fmt--;
 		fmt = append(fmt, ";\n```\n"); // '\n```' -> ';```' to fix syntax highlighting
-		if (alike(doc, "###") > 0) {   // strip type defs - already in code block
+		if (alike(doc, "###") > 0) { // strip type defs - already in code block
 			char match = 1;
 			// array of possible prefix matches
 			const char *prefixes[] = {"- `", "---", "Value =", "→", "Param", "Type:"};

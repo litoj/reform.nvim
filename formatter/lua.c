@@ -54,7 +54,7 @@ static _Bool elipsis(const in **docPtr, char **fmtPtr) {
 		const in *doc = *docPtr;
 		while (*doc++ != ')') {}
 		*docPtr = doc;
-		return 1;      // is last if present -> ends the loop
+		return 1; // is last if present -> ends the loop
 	} else return 0; // function: vararg marker
 }
 
@@ -138,7 +138,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 						} else fmt = append(fmt, "? = "); // interpret type as value type - no key type
 
 						if (*doc == '>') *fmt++ = '?'; // only indexes specified, no field type
-						else type_fmt(&doc, &fmt);     // resolve type of field
+						else type_fmt(&doc, &fmt); // resolve type of field
 					}
 					while (*doc && *doc++ != '>') {} // strip all extra useless table data
 					*fmt++ = '}';
@@ -261,7 +261,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 	const in *doc = *docPtr;
 	char *fmt     = *fmtPtr;
-	do {                                // parse all args
+	do { // parse all args
 		if (*doc == ',') *fmt++ = *doc++; // arg separator
 		while (empty(*doc)) *fmt++ = *doc++;
 
@@ -278,7 +278,7 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 
 				*fmt++ = *doc++;
 				while (*doc != ']') *fmt++ = *doc++;
-				*fmt++ = *doc++;   // add the ']'
+				*fmt++ = *doc++; // add the ']'
 				if (*doc != ':') { // no type found
 					fmt = append(fmt, " = ?");
 					break;
@@ -329,7 +329,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 	if (*doc == '(') *fmt++ = '_'; // give a name to unnamed fn (different from anonymous)
 	else
 		while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
-	*fmt++ = *doc++;                                     // append the actual `(`
+	*fmt++ = *doc++; // append the actual `(`
 
 	typed_identifier_fmt(&doc, &fmt);
 
@@ -381,12 +381,12 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 				else *fmt++ = 'f';
 				break;
 
-			case '[':              // string [[...]]
+			case '[': // string [[...]]
 				if (doc[1] != '[') { // make sure it's a real string
 					*fmt++ = '[';
 					break;
 				}
-			case '"':  // string "..."
+			case '"': // string "..."
 			case '\'': // string '...'
 				add_string(&doc, &fmt);
 				break;
@@ -482,7 +482,7 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 	}
 	char end = *doc;
 	if (end == '}') doc += 1 + (doc[2] == ' '); // ensure we're at the next ' '
-	else if (end == ':') doc++;                 // sometimes appears only after the type info
+	else if (end == ':') doc++; // sometimes appears only after the type info
 	else end = 0;
 
 	if (*doc != ' ') return 0; // not a param
@@ -503,7 +503,7 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 			type_fmt(&doc, &fmt);
 			param_fmt_default_value(&doc, &fmt);
 			if (*doc++ != ')' || !*doc || (*doc > ' ' && *doc != ':')) { // it was just a normal comment
-				if (end) *(*fmtPtr)++ = ':';                               // param without type info
+				if (end) *(*fmtPtr)++ = ':'; // param without type info
 				return offset;
 			}
 			*fmt++ = '`';
@@ -723,7 +723,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				doc--;
 
 				if (kind) {
-					indent[0] = 0;  // we don't know the type so we can't adjust text indent properly
+					indent[0] = 0; // we don't know the type so we can't adjust text indent properly
 					indent[1] = -1; // reset deeper level indent
 					                // indent[2] = --doc - docTmp - 3; // TODO: adjust this
 				} // else indent[2] = --doc - docTmp - 3;
@@ -757,10 +757,11 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 						if (indent[1] == -1) indent[0] += 2; // update 1st lvl for 2nds lvl to skip the diff
 					}
 
-					*fmt++                 = '-';
-					*fmt++                 = ' ';
+					*fmt++ = '-';
+					*fmt++ = ' ';
 
-					int desc_indent_offset = param_docs_fmt(&doc, &fmt); // format param entry
+					// format param entry
+					int desc_indent_offset = param_docs_fmt(&doc, &fmt);
 					// update offset according to param name formatting (extra space before ':' / {} etc.)
 					// there is always only one
 					if (desc_indent_offset) {
