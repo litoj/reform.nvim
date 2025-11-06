@@ -79,7 +79,7 @@ static int l_fmt(lua_State *L) {
 		int match = alike((in *) ft, fmts[i].ft);
 		if (match > 0 && !ft[match]) {
 			if (fmts[i].label && alike(doc, fmts[i].label) <= 0) continue; // filter some snippets
-			if (!fmt) fmt = (char *) malloc((len + 50) * sizeof(char));
+			if (!fmt) fmt = (char *) malloc((len + 100) * sizeof(char)); // NOTE: reserve space
 			char *end = fmts[i].formatter(doc, fmt, len);
 
 			if (!end) continue; // invalid format for parser

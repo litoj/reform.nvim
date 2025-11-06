@@ -449,85 +449,93 @@ static void param_fmt_default_value(const in **docPtr, char **fmtPtr) {
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
  */
-static void param_docs_fmt(const in **docPtr, char **fmtPtr) {
+static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 	const in *doc = *docPtr;
-	char *fmt     = *fmtPtr;
+	if (*doc == '|') return 0;
+	int offset = 0;
+	if (*doc == '{') {
+		doc++;
+		offset += 2; // also account for the closing brace
+	}
+	if ('A' <= *doc && *doc <= 'Z') return 0; // PascalCase is only for classes, not var_names
 
-	if (*doc == '|') return;
-	else if (*doc == '"') {
-		*fmt++ = '*';
-		*fmt++ = '"';
-		while (*++doc != '"') *fmt++ = *doc;
-		*fmt++ = '"';
-		*fmt++ = '*';
-		if (*++doc == ':') {
-			**fmtPtr = '`';
-			fmt[-1]  = '`';
-			*fmt++   = ':';
-			doc++;
+	char *fmt = *fmtPtr;
+
+	*fmt++    = '`';
+	if (*doc == '"') {
+		*fmt++ = *doc++;
+		while (*doc != '"') *fmt++ = *doc++;
+		*fmt++ = *doc++;
+	} else {
+		while (isVar(*doc) || *doc == '.') {
+			if (*doc == '\\') doc++;
+			*fmt++ = *doc++;
 		}
+	}
+	*fmt++ = '`';
+
+	if (fmt[-2] == '"') {
+		if (*doc == ':') *fmt++ = *doc++;
 		*docPtr = doc;
 		*fmtPtr = fmt;
-		return;
+		return 0;
 	}
-	if (*doc == '{') doc++;
-	if ('A' <= *doc && *doc <= 'Z') return;
-	*fmt++ = '`';
-	while (('a' <= *doc && *doc <= 'z') || ('A' <= *doc && *doc <= '_') ||
-	       ('.' <= *doc && *doc <= '9')) {
-		if (*doc == '\\') doc++;
-		*fmt++ = *doc++;
-	}
-	*fmt++ = '`';
-	int ok = *doc == '}' || *doc == ':';
-	if (*doc == '}') doc += doc[2] == ' ' ? 2 : 1;
-	else if (ok ? doc[1] != ' ' : *doc != ' ' || doc[1] != '(') return; // it's not a param
+	char end = *doc;
+	if (end == '}') doc += 1 + (doc[2] == ' '); // ensure we're at the next ' '
+	else if (end == ':') doc++;                 // sometimes appears only after the type info
+	else end = 0;
 
-	if (*doc == ':') {
-		doc++;
-		ok = 2;
-	}
-	if (*doc == ' ' && doc[1] == '(') { // contains type info
-		if (ok) {
-			*docPtr = doc;
-			*fmtPtr = fmt;
-		}
-		int match = alike(doc + 2, "optional)");
-		if (match) {
-			if (match < 0) return;
-			if (!ok) ok = 1;
-			doc += 11;
-			*fmt++  = '?';
-			*docPtr = doc;
-			*fmtPtr = fmt;
-			return;
-		}
-		fmt = append(fmt, " (`");
+	if (*doc != ' ') return 0; // not a param
+
+	if (doc[1] == '(') { // contains type info
 		doc += 2;
-		param_fmt_default_value(&doc, &fmt); // when only default value is given
-		type_fmt(&doc, &fmt);
-		param_fmt_default_value(&doc, &fmt);
-		if (*doc++ != ')' || !*doc || (*doc > ' ' && *doc != ':')) {
-			if (ok) *(*fmtPtr)++ = ':'; // param without type info
-			return;
-		}
-		*fmt++ = '`';
-		*fmt++ = ')';
-		if (*doc == ':') {
-			doc++;
-			ok = 2;
-		}
-		if ((ok > 1 ? alike(doc, " (optional)") : alike(doc, " optional"))) {
-			doc += ok > 1 ? 11 : 10;
+		int match = alike(doc, "optional)");
+		if (match) {
 			*fmt++ = '?';
-		} else if (!ok && *doc != '\n') return;
-	} else if (doc[-1] == '}') doc++;
+			doc += match;
+		} else {
+			if (end) { // make a checkpoint before " ("
+				*docPtr = doc - 2;
+				*fmtPtr = fmt;
+			}
+			fmt = append(fmt, " (`");
+			param_fmt_default_value(&doc, &fmt); // when only the default value is given
+			type_fmt(&doc, &fmt);
+			param_fmt_default_value(&doc, &fmt);
+			if (*doc++ != ')' || !*doc || (*doc > ' ' && *doc != ':')) { // it was just a normal comment
+				if (end) *(*fmtPtr)++ = ':';                               // param without type info
+				return offset;
+			}
+			*fmt++ = '`';
+			*fmt++ = ')';
+			if (*doc == ':') {
+				doc++;
+				if ((match = alike(doc, " (optional)"))) { // can appear separately from the type info
+					doc += match;
+					*fmt++ = '?';
+				}
+				end = ':';
+			} else {
+				if ((match = alike(doc, " optional"))) {
+					doc += match;
+					*fmt++ = '?';
+				}
+			}
+
+			if (!end && *doc != '\n') return offset;
+		}
+	} else if (end == '}') doc++;
+	else if (doc[1] == ':') {
+		offset++;
+		doc++;
+	}
 
 	if (*doc == ':') doc++;
 	*fmt++  = ':';
 
 	*docPtr = doc;
 	*fmtPtr = fmt;
+	return offset;
 }
 
 char *lua_fmt(const in *doc, char *fmt, int len) {
@@ -552,8 +560,10 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 	fmt = append(fmt + 1, "\n```\n\n");
 
 	if (doc >= docEnd) return fmt - 1;
-	int indent[] = {0, 0, 0}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
-	char kind    = 0;
+	int indent[] = {
+	  -1, -1, -1
+	}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
+	char kind = 0;
 	while (++doc < docEnd) {
 		switch (*doc) {
 			case '[':
@@ -642,7 +652,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case ':':
 				if (alike(doc + 1, " ~\n")) { // vim sections ' Section: ~'
-					indent[0] = indent[1] = indent[2] = 0;
+					indent[0] = indent[1] = indent[2] = -1;
 					int j                             = -1;
 					while (fmt > fmt0 && fmt[j] != '\n') j--;
 					j += 2;
@@ -662,6 +672,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 						if (kind == 'R') {
 							fmt       = append(fmt, " - ");
 							indent[0] = 2; // for list alignment (3 spaces) - make first indent already used
+							indent[1] = 0;
 							while (*doc == ' ') {
 								indent[1]++;
 								doc++;
@@ -691,9 +702,9 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 					*fmt++ = '@';
 					break;
 				}
+
 				doc += 2;
 				resolveKind(&doc, &fmt, &kind);
-				docTmp = doc;
 				if (kind == 'r' || kind == 'p') fmt = append(fmt, " - ");
 
 				if (doc[1] == '`') { // varname
@@ -709,46 +720,73 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				}
 
 				while (*doc == ' ') *fmt++ = *doc++;
-				indent[2] += --doc - docTmp - 3;
+				doc--;
 
 				if (kind) {
-					indent[0] = 1; // we don't know the type so we can't adjust text indent properly
-					indent[1] = 0;
-				}
+					indent[0] = 0;  // we don't know the type so we can't adjust text indent properly
+					indent[1] = -1; // reset deeper level indent
+					                // indent[2] = --doc - docTmp - 3; // TODO: adjust this
+				} // else indent[2] = --doc - docTmp - 3;
 			} break;
 			case '\n': {
 				if (fmt > fmt0 && fmt[-1] == ' ') fmt--;
 				if (fmt == fmt0 || fmt[-1] != '\n') *fmt++ = '\n';
 				if (alike(++doc, "---\n")) doc += 4;
+
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
+
 				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
 				     doc[j + 1] == ' ') || // param description
 				    alike(doc + j, "• ")) {
-					if (!indent[0] || j <= indent[0]) { // 1st lvl indent
-						doc += indent[0] = j;
-						indent[1] = indent[2] = 0;
-					} else if (indent[1] && j > indent[1]) doc += indent[1] - 2; // align to 2nd lvl
-					else doc += (indent[1] = j) - 2;                             // 2nd lvl indent
-					*fmt++ = ' ';
-					while (*doc++ == ' ') *fmt++ = ' ';
-					*fmt++ = '-';
-					*fmt++ = ' ';
-					if (*++doc == 162) {
-						doc += 2;
-						if (!indent[1]) indent[0] += 2; // `• {}` extra, 2nd lvl is adjusted to that
+
+					if (indent[0] == -1 || j <= indent[0]) { // update 1st level indent to lower value
+						indent[1] = indent[2] = -1;
+						doc += indent[0]      = j;
+						*fmt++                = ' ';
+					} else {
+						if (indent[1] == -1 || j < indent[1]) indent[1] = j; // update 2nd lvl indent
+
+						doc += indent[1]; // align to 2nd lvl
+						fmt = append(fmt, "   ");
 					}
-					param_docs_fmt(&doc, &fmt);             // format param entry
-				} else if (indent[0] && j >= indent[0]) { // wrapped text alignment
-					if (indent[1] && j >= indent[1]) doc += indent[1] - 2;
-					else if (!indent[1] && indent[2] && j >= indent[2])
-						doc += j - indent[2]; // indent with indent[2] spaces
-					else doc += indent[0];
-					*fmt++ = ' ';
+					while (*doc++ == ' ') *fmt++ = ' '; // keep alignment of the rest of the text
+
+					if (*++doc == 162) { // `• {}` extra
+						doc += 2;
+						if (indent[1] == -1) indent[0] += 2; // update 1st lvl for 2nds lvl to skip the diff
+					}
+
+					*fmt++                 = '-';
+					*fmt++                 = ' ';
+
+					int desc_indent_offset = param_docs_fmt(&doc, &fmt); // format param entry
+					// update offset according to param name formatting (extra space before ':' / {} etc.)
+					// there is always only one
+					if (desc_indent_offset) {
+						if (j == indent[0]) indent[2] = indent[0] + desc_indent_offset;
+						else if (j == indent[1]) indent[2] = -indent[1] - desc_indent_offset;
+					} else indent[2] = -1;
+				} else if (indent[0] != -1 && j >= indent[0]) { // wrapped text alignment
+
+					if (indent[1] != -1 && j >= indent[1]) { // deeper than (or at) 2nd lvl, not aligning
+						if (indent[2] < -1 && j >= -indent[2]) doc -= indent[2];
+						else doc += indent[1];
+						fmt = append(fmt, "   ");
+					} else if (indent[0]) { // were at the 1st lvl -> do alignment
+						doc += indent[(indent[2] > -1 && j >= indent[2]) ? 2 : 0];
+						*fmt++ = ' ';
+					}
 					while (*doc == ' ') *fmt++ = *doc++;
 				}
 				doc--;
 			} break;
+			case '\'':
+			case '"':
+				*fmt++ = '`';
+				add_string(&doc, &fmt);
+				*fmt++ = '`';
+				break;
 			default: *fmt++ = *doc;
 		}
 	}
