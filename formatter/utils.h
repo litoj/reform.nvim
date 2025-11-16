@@ -31,12 +31,12 @@ void resolveKind(const in **docPtr, char **fmtPtr, char *kind);
 #define empty(ch) ((ch) <= ' ' && (ch))
 #define isCONST(ch) (('A' <= (ch) && (ch) <= 'Z') || ('0' <= (ch) && (ch) <= '9') || (ch) == '_')
 /**
- * @brief matches object path, lua type path and file path (`-`, `.`, `/`, `_`)
+ * @brief matches object path, lua type path and file path (`-`, `.`, `/`, [0-9], `_`)
  */
-#define isPath(ch)                                                                                 \
-	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') ||                  \
+#define isPath(ch)                                                                \
+	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') || \
 	 ('-' <= (ch) && (ch) <= '9'))
-#define isVar(ch)                                                                                  \
-	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') ||                  \
+#define isVar(ch)                                                                 \
+	(('a' <= (ch) && (ch) <= 'z') || (ch) == '_' || ('A' <= (ch) && (ch) <= 'Z') || \
 	 ('0' <= (ch) && (ch) <= '9'))
 #endif

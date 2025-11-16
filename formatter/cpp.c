@@ -2,26 +2,29 @@
 
 char *cpp_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
-	if (alike(doc + len - 3, "```") > 0) { // move the end (code declaration) to the beginning
-		docEnd                    = doc + len - 6;
-		const in *docEndPractical = doc + len - 4; // strip also the newline from \n```$
+	if (alike(docEnd - 3, "```") > 0) { // move the end (code declaration) to the beginning
+		const in *docEndPractical = docEnd - 4; // strip also the newline from \n```$
+		docEnd -= 6;
 		while (1) {
 			while (*docEnd != '`') docEnd--;
 			if (alike(docEnd - 2, "```") && (docEnd - 3 <= doc || docEnd[-3] == '\n')) break;
 			else docEnd--;
 		}
+
 		if (docEnd[1] == '\n') { // ```\nsome simple text``` - no detailed docs, only signature
 			doc = docEnd + 2;
 			while (doc < docEndPractical) *fmt++ = *doc++;
 			return fmt;
 		}
+
+		const in *docCode = docEnd + 1;
 		docEnd -= 2; // end before ```
-		fmt               = append(fmt, "```cpp");
-		const in *docCode = docEnd + 3;
+		fmt = append(fmt, "```cpp");
 		while (*docCode != '\n') docCode++;
 		while (docCode < docEndPractical) *fmt++ = *docCode++;
 		while (fmt[-1] == '\n') fmt--;
 		fmt = append(fmt, ";\n```\n"); // '\n```' -> ';```' to fix syntax highlighting
+
 		if (alike(doc, "###") > 0) { // strip type defs - already in code block
 			char match = 1;
 			// array of possible prefix matches

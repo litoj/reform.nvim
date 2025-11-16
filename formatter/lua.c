@@ -53,6 +53,10 @@ static _Bool elipsis(const in **docPtr, char **fmtPtr) {
 	if (**docPtr == '(') { // table fields: number of left out fields
 		const in *doc = *docPtr;
 		while (*doc++ != ')') {}
+		// catch case of: ...(too long)...<some leftover text>
+		if (alike(doc, "...")) { // skip variable name that was left over behind the ...()...
+			while (isVar(*doc) || *doc == '.') doc++;
+		}
 		*docPtr = doc;
 		return 1; // is last if present -> ends the loop
 	} else return 0; // function: vararg marker
@@ -197,9 +201,28 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				*fmt++ = '0';
 				break;
 
+			case 16: // wrapped in ()
+				*fmt++ = '(';
+				type_fmt(&doc, &fmt);
+				*fmt++ = *doc++; // ')'
+				break;
+
+			default: // unknown type / value (nil, ...)
+				while (isVar(*doc) || *doc == '.') {
+					if (*doc == '[') break;
+					*fmt++ = *doc++;
+				}
+				if (fmt[-1] == '.') { // get back before the elipsis
+					fmt -= 3;
+					doc -= 3;
+				}
+
+				if (*doc != '<') break;
+				else doc++; // NOTE: intentional fallthrough for generics
+
 			case 15: // generics
 				*fmt++ = '<';
-				while (isCONST(*doc)) *fmt++ = *doc++;
+				while (isVar(*doc) || *doc == '.') *fmt++ = *doc++;
 				if (*doc == ':') {
 					*fmt++ = *doc++;
 					*fmt++ = ' ';
@@ -208,22 +231,6 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 
 				*fmt++ = *doc++; // should be always >
 				break;
-
-			case 16: // wrapped in ()
-				*fmt++ = '(';
-				type_fmt(&doc, &fmt);
-				*fmt++ = *doc++; // ')'
-				break;
-
-			default: // unknown type / value (nil, ...)
-				while (isPath(*doc)) {
-					if (*doc == '[') break;
-					*fmt++ = *doc++;
-				}
-				if (fmt[-1] == '.') { // get back before the elipsis
-					fmt -= 3;
-					doc -= 3;
-				}
 		}
 
 		if (*doc == '.' && doc[1] == '.' && doc[2] == '.') elipsis(&doc, &fmt);
@@ -542,20 +549,49 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
 	const char *fmt0 = fmt; // for checking beginning of output
 	fmt              = append(fmt, "```lua\n");
-	doc += 7;
-	if (*doc == '(') {
-		if (alike(doc + 1, "method)")) {
-			callable_fmt(&doc, &fmt);
-		} else {
-			if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
+	if (alike(docEnd - 4, "\n```")) {
+		docEnd -= 6;
+		while (1) {
+			while (*docEnd != '`') docEnd--;
+			if (alike(docEnd - 2, "```") && (docEnd - 3 <= doc || docEnd[-3] == '\n')) break;
+			else docEnd--;
+		}
 
-			doc += 5;
-			while (*doc != ')') doc++;
+		// ```\nsome simple text``` - no detailed docs, only signature
+		if (docEnd - 8 > doc && alike(docEnd - 8, "\n---\n\n```lua\n")) {
+			const in *docCode = docEnd + 5;
+			docEnd -= 8; // end normal parsing regime before the end block
+
+			code_fmt(&docCode, &fmt, "```");
+
+			// drop the first block (is the same, just less detailed)
+			doc += 7;
+			while (1) {
+				while (*doc != '`') doc++;
+				if (alike(doc, "```")) break;
+				else doc++;
+			}
 			doc += 2;
 		}
 	}
-	code_fmt(&doc, &fmt, "```");
-	doc += 3;
+
+	if (alike(doc, "```")) {
+		doc += 7;
+		if (*doc == '(') {
+			if (alike(doc + 1, "method)")) {
+				callable_fmt(&doc, &fmt);
+			} else {
+				if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
+
+				doc += 5;
+				while (*doc != ')') doc++;
+				doc += 2;
+			}
+		}
+		code_fmt(&doc, &fmt, "```");
+		doc += 3;
+	}
+
 	while (*--fmt <= ' ') {}
 	fmt = append(fmt + 1, "\n```\n\n");
 
@@ -784,9 +820,13 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case '\'':
 			case '"':
-				*fmt++ = '`';
-				add_string(&doc, &fmt);
-				*fmt++ = '`';
+				if (doc[-1] != ' ') {
+					*fmt++ = *doc;
+				} else {
+					*fmt++ = '`';
+					add_string(&doc, &fmt);
+					*fmt++ = '`';
+				}
 				break;
 			default: *fmt++ = *doc;
 		}
