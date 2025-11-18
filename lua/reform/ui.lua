@@ -38,7 +38,7 @@ M.config = M.default_config
 function M.override.reform.input(opts, on_confirm)
 	opts = opts or {}
 	local origDir = vim.uv.cwd()
-	vim.uv.chdir(opts.dir or origDir)
+	vim.fn.chdir(opts.dir or origDir)
 
 	local co -- support for providing input synchronously via coroutines
 	if not on_confirm then
@@ -70,7 +70,7 @@ function M.override.reform.input(opts, on_confirm)
 	local histUpdate = true
 
 	local function callback(confirmed)
-		vim.uv.chdir(origDir)
+		vim.fn.chdir(origDir)
 
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
@@ -160,10 +160,11 @@ function M.override.reform.select(items, opts, on_choice)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].filetype = 'ui-select'
 	local width = #prompt
-	local lines = {}
+	local lines = { [#items] = '' }
 	for i, item in ipairs(items) do
-		lines[i] = '[' .. i .. '] ' .. opts.format_item(item)
-		if #lines[i] > width then width = #lines[i] end
+		item = '[' .. i .. '] ' .. opts.format_item(item)
+		if #item > width then width = #item end
+		lines[i] = item
 		vim.keymap.set('n', tostring(i), function() callback(i) end, { buffer = buf })
 	end
 	vim.api.nvim_buf_set_lines(buf, 0, -1, true, lines)

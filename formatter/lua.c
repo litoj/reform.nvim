@@ -208,7 +208,7 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				break;
 
 			default: // unknown type / value (nil, ...)
-				while (isVar(*doc) || *doc == '.') {
+				while (isVar(*doc) || *doc == '.' || *doc == '-') {
 					if (*doc == '[') break;
 					*fmt++ = *doc++;
 				}
@@ -220,17 +220,11 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				if (*doc != '<') break;
 				else doc++; // NOTE: intentional fallthrough for generics
 
-			case 15: // generics
+			case 15: { // generics
 				*fmt++ = '<';
-				while (isVar(*doc) || *doc == '.') *fmt++ = *doc++;
-				if (*doc == ':') {
-					*fmt++ = *doc++;
-					*fmt++ = ' ';
-					type_fmt(&doc, &fmt);
-				}
-
+				typed_identifier_fmt(&doc, &fmt);
 				*fmt++ = *doc++; // should be always >
-				break;
+			} break;
 		}
 
 		if (*doc == '.' && doc[1] == '.' && doc[2] == '.') elipsis(&doc, &fmt);
