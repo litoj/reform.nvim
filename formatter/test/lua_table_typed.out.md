@@ -1,5 +1,5 @@
 ```lua
-_G.behaviour = manipulator.ts.Opts{
+_G.behaviour = manipulator.ts.Opts = {
     auto_apply_diff_after_generation = false,
     auto_approve_tool_permissions = bool|''[] = true,
     buf = nil|0.,

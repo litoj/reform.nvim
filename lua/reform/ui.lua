@@ -54,11 +54,14 @@ function M.override.reform.input(opts, on_confirm)
 	local width = math.max(#prompt + 2, #default)
 
 	M.config.win.input.col = -width / 2
-	M.config.win.input.width = width + math.max(#default * 2, 20)
+	M.config.win.input.width = width + math.max(#default * 2, 40)
 	local win = util.mk_win(buf, M.config.win.input, prompt)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
+
+	local origMode = vim.fn.mode()
 	vim.cmd.startinsert { bang = true }
+	vim.schedule(function() vim.cmd.startinsert { bang = true } end)
 
 	vim.bo[buf].filetype = 'ui-input'
 	local nsName = 'vim.ui.input'
@@ -74,6 +77,7 @@ function M.override.reform.input(opts, on_confirm)
 
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
+		if origMode == 'n' then vim.schedule(vim.cmd.stopinsert) end
 		if confirmed then
 			if #text > 3 and not prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
 			on_confirm(text)
@@ -169,7 +173,6 @@ function M.override.reform.select(items, opts, on_choice)
 	end
 	vim.api.nvim_buf_set_lines(buf, 0, -1, true, lines)
 	vim.bo[buf].modifiable = false
-	vim.cmd.stopinsert()
 
 	M.config.win.select.height = #items
 	M.config.win.select.width = width
@@ -182,7 +185,7 @@ function M.override.reform.select(items, opts, on_choice)
 			if cursor[2] ~= 1 then vim.api.nvim_win_set_cursor(win, { cursor[1], 1 }) end
 		end,
 	})
-	vim.cmd.stopinsert()
+	vim.cmd 'stopinsert'
 
 	vim.cmd [[
 		syn match Number /-\?\d\+/

@@ -28,6 +28,8 @@ int alike(const in *str, const char *cmp);
  */
 void resolveKind(const in **docPtr, char **fmtPtr, char *kind);
 
+#define ERROR_STR "REFORM.ERROR"
+
 #define empty(ch) ((ch) <= ' ' && (ch))
 #define isCONST(ch) (('A' <= (ch) && (ch) <= 'Z') || ('0' <= (ch) && (ch) <= '9') || (ch) == '_')
 /**

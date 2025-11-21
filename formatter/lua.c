@@ -49,20 +49,21 @@ static void add_string(const in **docPtr, char **fmtPtr) {
  */
 static _Bool elipsis(const in **docPtr, char **fmtPtr) {
 	*fmtPtr = append(*fmtPtr, "...");
-	*docPtr += 3;
+	*docPtr += (*docPtr)[3] == '.' ? 4 : 3;
 	if (**docPtr == '(') { // table fields: number of left out fields
 		const in *doc = *docPtr;
 		while (*doc++ != ')') {}
 		// catch case of: ...(too long)...<some leftover text>
 		if (alike(doc, "...")) { // skip variable name that was left over behind the ...()...
-			while (isVar(*doc) || *doc == '.') doc++;
+			// XXX: lua_ls always puts 8 last chars from the left out part.
+			doc += 3 + 8;
 		}
 		*docPtr = doc;
 		return 1; // is last if present -> ends the loop
 	} else return 0; // function: vararg marker
 }
 
-static void typed_identifier_fmt(const in **docPtr, char **fmtPtr);
+static void typed_identifier_fmt(const in **docPtr, char **fmtPtr, char spacer);
 
 /**
  * @brief Format type information to a simpler, better readable format.
@@ -71,9 +72,9 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr);
  * @param fmtPtr ptr to buffer for formatted docs
  */
 static void type_fmt(const in **docPtr, char **fmtPtr) {
-	static const char *types[] = {"number",   "string", "any",   "unknown", "integer", "boolean",
-	                              "table",    "{",      "'",     "[[",      "\"",      "[",
-	                              "function", "fun(",   "float", "<",       "("};
+	static const char *types[] = {"number", "string", "any", "unknown", "integer", "boolean",
+	                              "table",  "{",      "'",   "[[",      "\"",      "function",
+	                              "fun(",   "float",  "<",   "("};
 	static const int typeCnt   = sizeof(types) / sizeof(const in *);
 
 	const in *doc              = *docPtr;
@@ -153,12 +154,21 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 				break;
 
-			case 7: // { - literal table/value definition.
-				*fmt++ = '{';
-				typed_identifier_fmt(&doc, &fmt);
-				while (*doc != '}') *fmt++ = *doc++;
-				*fmt++ = *doc++;
-				break;
+			case 7: { // { - literal table/value definition.
+				*fmt++      = '{';
+				char spacer = *doc;
+				typed_identifier_fmt(&doc, &fmt, spacer);
+
+				if (*doc == '}')
+					if (fmt[-1] == *--doc) fmt--;
+
+				if (spacer > ' ') spacer = *doc; // there was no spacer, so make the check pass
+				else *fmt++ = spacer;
+
+				// for elipsis fallback just assume it was supposed to end already
+				if (*doc == spacer && doc[1] == '}') doc += 2;
+				*fmt++ = '}';
+			} break;
 
 			case 8: // string value
 			case 9:
@@ -168,23 +178,12 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				doc++;
 				break;
 
-			case 11: // '[' - manually denoted array
-				*fmt++ = '{';
-				if (*doc != ']') // table/array has data inside
-					do {
-						if (*doc == ',') *fmt++ = *doc++;
-						type_fmt(&doc, &fmt);
-					} while (*doc == ',');
-				*fmt++ = '}';
-				doc++;
-				break;
-
-			case 12: // function
+			case 11: // function
 				fmt = append(fmt, "fun()");
 				break;
-			case 13: { // fun():rettype - function with specified args
+			case 12: { // fun():rettype - function with specified args
 				fmt = append(fmt, "fun(");
-				if (*doc != ')') typed_identifier_fmt(&doc, &fmt);
+				if (*doc != ')') typed_identifier_fmt(&doc, &fmt, ' ');
 				*fmt++ = ')';
 				if (*doc++ == ')' && *doc == ':') { // fn return value
 					if (doc[1] == '.') {
@@ -195,20 +194,20 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				}
 			} break;
 
-			case 14: // float
+			case 13: // float
 				*fmt++ = '0';
 				*fmt++ = '.';
 				*fmt++ = '0';
 				break;
 
-			case 16: // wrapped in ()
+			case 15: // wrapped in ()
 				*fmt++ = '(';
 				type_fmt(&doc, &fmt);
 				*fmt++ = *doc++; // ')'
 				break;
 
 			default: // unknown type / value (nil, ...)
-				while (isVar(*doc) || *doc == '.' || *doc == '-') {
+				while (isVar(*doc) || (*doc == '.' && doc[1] != '.') || *doc == '-') {
 					if (*doc == '[') break;
 					*fmt++ = *doc++;
 				}
@@ -220,9 +219,9 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 				if (*doc != '<') break;
 				else doc++; // NOTE: intentional fallthrough for generics
 
-			case 15: { // generics
+			case 14: { // generics
 				*fmt++ = '<';
-				typed_identifier_fmt(&doc, &fmt);
+				typed_identifier_fmt(&doc, &fmt, '\0');
 				*fmt++ = *doc++; // should be always >
 			} break;
 		}
@@ -243,9 +242,11 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
 		while (empty(*doc)) doc++;
 	} while (*doc == '|');
 
-	if (*doc == '=') { // also include the actual value
+	// also include the actual value
+	if (*doc == '=' || *doc == '{') {
 		*fmt++ = ' ';
-		*fmt++ = *doc++;
+		*fmt++ = '=';
+		if (*doc == '=') doc++;
 		type_fmt(&doc, &fmt);
 	}
 
@@ -258,12 +259,19 @@ static void type_fmt(const in **docPtr, char **fmtPtr) {
  *
  * @param docPtr ptr to current pos in source docs
  * @param fmtPtr ptr to buffer for formatted docs
+ * @param spacer ' ' or '\n' (or any char if there is no spacer) that follows the sep (after ','),
+ * or '\0' if not known, used to recover from elipsis
  */
-static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
+static void typed_identifier_fmt(const in **docPtr, char **fmtPtr, char spacer) {
 	const in *doc = *docPtr;
 	char *fmt     = *fmtPtr;
 	do { // parse all args
-		if (*doc == ',') *fmt++ = *doc++; // arg separator
+		if (*doc == ',') {
+			if (!spacer) spacer = doc[1];
+			else if (spacer <= ' ' ? doc[1] != spacer : doc[1] <= ' ') break;
+
+			*fmt++ = *doc++; // arg separator
+		}
 		while (empty(*doc)) *fmt++ = *doc++;
 
 		const in *docTmp = doc;
@@ -278,11 +286,15 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 				}
 
 				*fmt++ = *doc++;
-				while (*doc != ']') *fmt++ = *doc++;
-				*fmt++ = *doc++; // add the ']'
+				type_fmt(&doc, &fmt);
+				if (*doc != ']') { // aftereffects of elipsis
+					*fmt++ = ']';
+					continue;
+				} else *fmt++ = *doc++; // add the ']'
+
 				if (*doc != ':') { // no type found
 					fmt = append(fmt, " = ?");
-					break;
+					continue;
 				} // fall through to type def
 			case ':': // arg type
 				doc++;
@@ -292,7 +304,7 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 
 			case '.': // we know it's an elipsis from the loop before
 				if (elipsis(&doc, &fmt)) continue;
-				else break;
+				else break; // parse the type after it
 
 			case '?':
 				if (doc[1] != '\n') { // function return: let direct type fall through to default
@@ -305,9 +317,6 @@ static void typed_identifier_fmt(const in **docPtr, char **fmtPtr) {
 				doc = docTmp;
 		}
 		type_fmt(&doc, &fmt);
-
-		// TODO: can fn params really result in ...Too Long?
-		// while (*doc && (*doc <= ' ' || *doc == '}')) doc++; // 'too long' message fix
 
 		if (alike(doc, "___")) { // param signature markers
 			doc += 3;
@@ -332,7 +341,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 		while (*doc != '(' && *doc > ' ') *fmt++ = *doc++; // skip to fn definition
 	*fmt++ = *doc++; // append the actual `(`
 
-	typed_identifier_fmt(&doc, &fmt);
+	typed_identifier_fmt(&doc, &fmt, '\0'); // we don't know if there are spaces between the params
 
 	if (*doc != ')' || alike(doc + 1, " end")) {
 		*docPtr = doc - 1;
@@ -350,7 +359,7 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
 			while (*doc >= '.') doc++; // skip return value number `2.`
 			if (doc[-1] == '.') *fmt++ = ',';
 			*fmt++ = *doc++; // add space
-			typed_identifier_fmt(&doc, &fmt);
+			typed_identifier_fmt(&doc, &fmt, '-'); // any spacer, because it won't find sep (',')
 			docTmp = doc;
 			while (empty(*doc)) doc++;
 		} while ('1' <= *doc && *doc <= '9');
@@ -408,7 +417,13 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 			case ':': // type
 				if (doc[1] == '\n') {
 					doc += 2;
-					while (*doc != '|') doc++;
+					while (*doc && *doc != '|') doc++;
+					if (!*doc) {
+						fmt     = append(fmt, ERROR_STR);
+						*docPtr = doc;
+						*fmtPtr = fmt;
+						return;
+					}
 				}
 
 				if (doc[1] == ' ') {
@@ -416,7 +431,8 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 						doc--;
 						fmt--;
 					}
-					typed_identifier_fmt(&doc, &fmt);
+					// pass in a _no-space_ spacer to not parse potential following values
+					typed_identifier_fmt(&doc, &fmt, '-');
 					doc--;
 				} else *fmt++ = *doc; // TODO: can be a member method call (string:gsub())
 				break;
