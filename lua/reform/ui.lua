@@ -16,7 +16,7 @@ local M = {
 		override = { input = true, select = true },
 		win = {
 			input = vim.tbl_extend('force', {
-				height = 1,
+				height = 2,
 				row = -3,
 			}, util.win),
 			select = vim.tbl_extend(
@@ -59,11 +59,6 @@ function M.override.reform.input(opts, on_confirm)
 	vim.wo[win].cursorline = false
 	vim.api.nvim_set_current_line(default)
 
-	local origMode = vim.fn.mode()
-	-- one append-insert was not enough
-	vim.cmd.startinsert { bang = true }
-	vim.schedule(function() vim.cmd.startinsert { bang = true } end)
-
 	vim.bo[buf].filetype = 'ui-input'
 	local nsName = 'vim.ui.input'
 	local ns = vim.api.nvim_get_namespaces()[nsName] or vim.api.nvim_create_namespace(nsName)
@@ -77,12 +72,6 @@ function M.override.reform.input(opts, on_confirm)
 		vim.fn.chdir(origDir)
 
 		local text = vim.api.nvim_get_current_line()
-		if origMode == 'n' then
-			vim.api.nvim_create_autocmd('BufEnter', {
-				once = true,
-				callback = function() vim.cmd.stopinsert() end,
-			})
-		end
 		vim.api.nvim_win_close(win, true)
 		if confirmed then
 			if #text > 3 and not prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
@@ -92,6 +81,7 @@ function M.override.reform.input(opts, on_confirm)
 		end
 	end
 
+	vim.cmd { cmd = 'startinsert', bang = true }
 	vim.api.nvim_create_autocmd('ModeChanged', {
 		buffer = buf,
 		callback = function(state) -- cancel the window
