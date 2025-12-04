@@ -13,6 +13,10 @@
 #endif
 #include <stdlib.h>
 
+// how much extra space to allocate for the formatted output
+// wrapping mentioned strings in `` takes a lot of space
+#define DEFAULT_LEN_INCREASE 300
+
 // clang-format off
 #define p(fmt) { #fmt, fmt##_fmt, "```"#fmt"\n"}
 // clang-format on
@@ -41,30 +45,25 @@ static const int fmtsN = sizeof(fmts) / sizeof(struct pair);
 int main(int argc, char *argv[]) {
 	in *doc;
 	if (argc < 2) {
-		printf("usage: ./main.out FileType TestString\n   or: ./main.out FileType < test.txt\n");
+		printf("usage: ./main.out <ActiveFileType> <fmtExtraSpace?> < test.txt\n");
 		return 1;
 	}
-	size_t len = 0;
-	char raw   = alike((in *) argv[argc - 1], "-r") > 0;
-	if (argc < 3 || raw) {
-		size_t alloc = 32768;
-		doc          = (in *) malloc(sizeof(in) * alloc);
-		size_t size  = 0;
-		while ((size = fread(doc + len, 1, alloc - len, stdin)) > 0) {
-			if ((len += size) >= alloc - 1) doc = (in *) realloc(doc, sizeof(in) * (alloc *= 2));
-		}
-		doc[len] = '\0';
-	} else {
-		doc = (in *) argv[2];
-		while (doc[++len]) {}
+	size_t len   = 0;
+	size_t alloc = 200000;
+	doc          = (in *) malloc(sizeof(in) * alloc);
+	size_t size  = 0;
+	while ((size = fread(doc + len, 1, alloc - len, stdin)) > 0) {
+		if ((len += size) >= alloc - 1) doc = (in *) realloc(doc, sizeof(in) * (alloc *= 2));
 	}
-	if (doc[len - 1] == '\n') doc[--len] = 0;
+	doc[len] = '\0';
+	while (len && doc[len - 1] == '\n') doc[--len] = 0;
 	const char *ft = argv[1];
+	int fmtLen     = len + (argc == 3 ? atoi(argv[2]) : DEFAULT_LEN_INCREASE);
 
 #else
 
 static int l_fmt(lua_State *L) {
-	if (lua_gettop(L) != 2) return 0;
+	if (lua_gettop(L) < 2) return 0;
 	size_t len;
 	const in *doc  = (in *) luaL_checklstring(L, 1, &len);
 	const char *ft = luaL_checkstring(L, 2);
@@ -72,6 +71,7 @@ static int l_fmt(lua_State *L) {
 		len--;
 		doc++;
 	}
+	int fmtLen = len + (lua_gettop(L) == 3 ? luaL_checkinteger(L, 3) : DEFAULT_LEN_INCREASE);
 #endif
 
 	char *fmt = NULL;
@@ -79,7 +79,7 @@ static int l_fmt(lua_State *L) {
 		int match = alike((in *) ft, fmts[i].ft);
 		if (match > 0 && !ft[match]) {
 			if (fmts[i].label && alike(doc, fmts[i].label) <= 0) continue; // filter some snippets
-			if (!fmt) fmt = (char *) malloc((len + 100) * sizeof(char)); // NOTE: reserve space
+			if (!fmt) fmt = (char *) malloc(fmtLen * sizeof(char));
 			char *end = fmts[i].formatter(doc, fmt, len);
 
 			if (!end) continue; // invalid format for parser
@@ -90,8 +90,6 @@ static int l_fmt(lua_State *L) {
 			*++end = '\0';
 #ifdef DEBUG
 			// printf("\033[34morigin\033[91m: \033[32mlen\033[31m=\033[95m%ld\033[0m\n%s\n", len, doc);
-			len = end - fmt + 1;
-			if (!raw) printf("\033[32mlen\033[31m=\033[95m%ld\n\033[91m------------\033[0m\n", len);
 #endif
 			char *ptr = fmt = (char *) realloc(fmt, (end - fmt + 1) * sizeof(char));
 			char *start     = fmt;
@@ -117,7 +115,7 @@ static int l_fmt(lua_State *L) {
 			}
 			free(start);
 #ifdef DEBUG
-			if (argc < 3 || raw) free(doc);
+			free(doc);
 			return 0;
 #else
 			return 1;
@@ -133,7 +131,7 @@ static int l_fmt(lua_State *L) {
 		printf(" \033[32m%s\033[31m: \033[33m'%s'", fmts[i].ft, fmts[i].label);
 	}
 	printf("\033[0mGot: \033[32m%s\033[31m: \033[33m'\033[91m%.10s\033[33m'\033[0m...\n", ft, doc);
-	if (argc < 3 || raw) free(doc);
+	free(doc);
 	return 1;
 #else
 	return 0;

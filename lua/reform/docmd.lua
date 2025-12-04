@@ -21,6 +21,7 @@ local M = {
 		},
 		labels = { cs = 'c_sharp' },
 		ft = true, -- TODO: set to formatters → export fmt fn per lang all in table
+		max_doc_len_increase = 500,
 		debug = '/tmp/reform.dbg',
 	},
 }
@@ -73,7 +74,7 @@ function M.override.reform.convert(doc, contents)
 				end
 			end
 
-			local ret = require 'reform.formatter'(str, ft)
+			local ret = require 'reform.formatter'(str, ft, M.config.max_doc_len_increase)
 
 			if M.config.debug then
 				if M.config.debug:sub(1, 1) == '"' then --

@@ -18,7 +18,13 @@ function vim.api.nvim_buf_set_extmark(buffer: integer, ns_id: integer, line: int
 
  If present, the position defined by `end_col` and `end_row` should be after
  the start position in order for the extmark to cover a range.
- An earlier end position is not an error, but then it behaves like an empty
+ An earlier end position is not an error, but then it behaves like an empty:
+   type  type of the error, 'E', '1', etc.
+   valid  |TRUE|: recognized error message
+   user_data
+     custom data associated with the item, can be
+     any type.
+
  range (no highlighting).
 
 @*param* `buffer` — Buffer id, or 0 for current buffer
@@ -33,16 +39,18 @@ function vim.api.nvim_buf_set_extmark(buffer: integer, ns_id: integer, line: int
 
  - hl_group: highlight group used for the text range. This and below
      the latter of which can be obtained using `nvim_get_hl_id_by_name()`.
+   - callback (function|string) optional: Lua function (or Vimscript function name, if
 
      priority last).
  - hl_eol : when true, for a multiline highlight covering the
             cursorline highlight).
+      - normal text
  - virt_text_pos : position of virtual text. Possible values:
    - "eol": right after eol character (default).
  - virt_text_hide : hide the virtual text when the background
                     scrolling with 'nowrap' (or 'smoothscroll').
                     Currently only affects "overlay" virt_text.
- - virt_text_repeat_linebreak: repeat the virtual text on
+ - virt_text_repeat_linebreak:
                                wrapped lines.
  - hl_mode : control how highlights are combined with the
              virt_text highlights, but might affect `hl_group`

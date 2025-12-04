@@ -22,4 +22,4 @@ Field `.exec_on_call`:
  - for reusable paths use `x:new()` to clone the path built until that point
  - for direct evaluation call twice (`x:y(opts?)()` or `x.y()()`)
    this will evaluate the whole path without saving the new callee to the old callpath,
-   or call `:exec()` or `.fn()` manually (saves the last callee to the original callpath)
+   or call `:exec()` or `.fn()` manually (saves the last callee to the original callpath)|

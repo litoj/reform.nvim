@@ -61,6 +61,7 @@ error 'Cannot require a meta file'
 ---@field ft? table<string,boolean|fun(string,vim.bo.ft):string[]>|true `ft` for which docs should be reformed (if supported)
 ---@field debug? string|false path for writing docs before processing or true for just pringing
 ---@field labels? table<string,string> map of corrections for markdown filetype labels (' man' → bash)
+---@field max_doc_len_increase? integer how much should we expect the documentation will increase in size after formatting
 
 ---@class reform.docmd: reform.Override
 ---@field default_config reform.docmd.Config

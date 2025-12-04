@@ -481,17 +481,17 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 	*fmt++    = '`';
 	if (*doc == '"') {
 		*fmt++ = *doc++;
-		while (*doc != '"') *fmt++ = *doc++;
+		while (*doc >= ' ' && *doc != '"') *fmt++ = *doc++;
 		*fmt++ = *doc++;
 	} else {
-		while (isVar(*doc) || *doc == '.') {
+		while (isPath(*doc)) {
 			if (*doc == '\\') doc++;
 			*fmt++ = *doc++;
 		}
 	}
 	*fmt++ = '`';
 
-	if (fmt[-2] == '"') {
+	if (fmt[-2] == '"') { // no type info or optionality expected for strings
 		if (*doc == ':') *fmt++ = *doc++;
 		*docPtr = doc;
 		*fmtPtr = fmt;
@@ -502,7 +502,14 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 	else if (end == ':') doc++; // sometimes appears only after the type info
 	else end = 0;
 
-	if (*doc != ' ') return 0; // not a param
+	if (*doc != ' ') {
+		if (end != ':' && *doc != ':') return 0; // not a param
+
+		*fmt++  = end == ':' ? end : *doc++;
+		*docPtr = doc;
+		*fmtPtr = fmt;
+		return offset;
+	}
 
 	if (doc[1] == '(') { // contains type info
 		doc += 2;
@@ -539,12 +546,14 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 				}
 			}
 
-			if (!end && *doc != '\n') return offset;
+			if (!end && *doc != '\n' && *doc != ':') return offset;
 		}
 	} else if (end == '}') doc++;
 	else if (doc[1] == ':') {
 		offset++;
 		doc++;
+	} else if (end != ':' && *doc != ':') {
+		return 0;
 	}
 
 	if (*doc == ':') doc++;
@@ -663,10 +672,10 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				}
 				break;
 			case '|': // vim help-page-style links '|text|'
-				if (doc[1] != ' ') {
+				if (doc[1] > ' ') {
 					char *fmtTmp = fmt;
 					*fmt++       = '[';
-					while (*++doc != '|' && *doc != ' ' && *doc != '\n') *fmt++ = *doc;
+					while (*++doc > ' ' && *doc != '|') *fmt++ = *doc;
 					if (*doc != '|') {
 						*fmtTmp = '|';
 						doc--;
@@ -782,9 +791,8 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				int j = 0; // get indentation
 				while (doc[j] == ' ') j++;
 
-				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') &&
-				     doc[j + 1] == ' ') || // param description
-				    alike(doc + j, "• ")) {
+				if (((doc[j] == '-' || doc[j] == '+' || doc[j] == '*') && doc[j + 1] == ' ') ||
+				    alike(doc + j, "• ")) { // list item and/or param description
 
 					if (indent[0] == -1 || j <= indent[0]) { // update 1st level indent to lower value
 						indent[1] = indent[2] = -1;
@@ -830,7 +838,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case '\'':
 			case '"':
-				if (doc[-1] != ' ') {
+				if (doc[1] <= ' ' && isVar(doc[-1])) {
 					*fmt++ = *doc;
 				} else {
 					*fmt++ = '`';

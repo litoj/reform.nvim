@@ -60,6 +60,7 @@ function M.override.reform.input(opts, on_confirm)
 	vim.api.nvim_set_current_line(default)
 
 	local origMode = vim.fn.mode()
+	-- one append-insert was not enough
 	vim.cmd.startinsert { bang = true }
 	vim.schedule(function() vim.cmd.startinsert { bang = true } end)
 
@@ -76,8 +77,13 @@ function M.override.reform.input(opts, on_confirm)
 		vim.fn.chdir(origDir)
 
 		local text = vim.api.nvim_get_current_line()
+		if origMode == 'n' then
+			vim.api.nvim_create_autocmd('BufEnter', {
+				once = true,
+				callback = function() vim.cmd.stopinsert() end,
+			})
+		end
 		vim.api.nvim_win_close(win, true)
-		if origMode == 'n' then vim.schedule(vim.cmd.stopinsert) end
 		if confirmed then
 			if #text > 3 and not prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
 			on_confirm(text)

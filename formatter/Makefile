@@ -33,7 +33,7 @@ testDir:
 	@mkdir -p /tmp/reform.test/
 
 test/%in.md: debug testDir
-	./main.out $(shell echo $@ | sed 's/[_.].*in\.md//;s,test/,,') -r < $@ > /tmp/reform.$(shell echo $@ | sed 's/in\./gen./')
+	./main.out $(shell echo $@ | sed 's/[_.].*in\.md//;s,test/,,') < $@ > /tmp/reform.$(shell echo $@ | sed 's/in\./gen./')
 	@-diff $(shell echo $@ | sed 's/in\./out./') /tmp/reform.$(shell echo $@ | sed 's/in\./gen./') \
 		--color=never > /tmp/reform.$(shell echo $@ | sed 's/in\.md/diff/') \
 		&& rm /tmp/reform.$(shell echo $@ | sed 's/in\.md//')* \
