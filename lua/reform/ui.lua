@@ -83,10 +83,9 @@ function M.override.reform.input(opts, on_confirm)
 
 	vim.cmd { cmd = 'startinsert', bang = true }
 	vim.api.nvim_create_autocmd('ModeChanged', {
-		buffer = buf,
-		callback = function(state) -- cancel the window
-			if state.match == 'i:n' then callback() end
-		end,
+		callback = function(_) callback() end, -- cancel the window
+		once = true,
+		pattern = 'i:n',
 	})
 
 	for name, action in pairs {
