@@ -16,7 +16,7 @@ local M = {
 		override = { input = true, select = true },
 		win = {
 			input = vim.tbl_extend('force', {
-				height = 2,
+				height = 1,
 				row = -3,
 			}, util.win),
 			select = vim.tbl_extend(
@@ -81,11 +81,16 @@ function M.override.reform.input(opts, on_confirm)
 		end
 	end
 
-	vim.cmd { cmd = 'startinsert', bang = true }
+	if vim.fn.mode() == 'i' then
+		vim.cmd { cmd = 'startinsert', bang = true }
+	else
+		vim.api.nvim_input 'A'
+	end
 	vim.api.nvim_create_autocmd('ModeChanged', {
-		callback = function(_) callback() end, -- cancel the window
-		once = true,
-		pattern = 'i:n',
+		buffer = buf,
+		callback = function(s)
+			if s.match == 'i:n' then callback() end
+		end, -- cancel the window
 	})
 
 	for name, action in pairs {
