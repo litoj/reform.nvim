@@ -68,11 +68,21 @@ function M.override.reform.input(opts, on_confirm)
 	local histPos = last + 1
 	local histUpdate = true
 
+	local mode = vim.fn.mode()
 	local function callback(confirmed)
 		vim.fn.chdir(origDir)
 
 		local text = vim.api.nvim_get_current_line()
 		vim.api.nvim_win_close(win, true)
+
+		if vim.fn.mode() ~= mode then -- restore the mode after the window was closed
+			if mode == 'i' then
+				vim.cmd.startinsert()
+			else
+				vim.cmd.stopinsert()
+			end
+		end
+
 		if confirmed then
 			if #text > 3 and not prompt:match '[Nn]ame' then vim.fn.histadd('@', text) end
 			on_confirm(text)
@@ -81,7 +91,7 @@ function M.override.reform.input(opts, on_confirm)
 		end
 	end
 
-	if vim.fn.mode() == 'i' then
+	if mode == 'i' then
 		vim.cmd { cmd = 'startinsert', bang = true }
 	else
 		vim.api.nvim_input 'A'
