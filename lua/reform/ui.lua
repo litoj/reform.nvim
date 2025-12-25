@@ -195,6 +195,15 @@ function M.override.reform.select(items, opts, on_choice)
 			if cursor[2] ~= 1 then vim.api.nvim_win_set_cursor(win, { cursor[1], 1 }) end
 		end,
 	})
+	vim.api.nvim_create_autocmd('CmdlineLeave', {
+		buffer = buf,
+		callback = function(s)
+			if s.match == '/' and not vim.v.event.abort then -- simulate enter to confirm search
+				vim.api.nvim_input '\013' -- runs in async, so we get to select the line first
+				vim.cmd.noh()
+			end
+		end,
+	})
 	vim.cmd 'stopinsert'
 
 	vim.cmd [[

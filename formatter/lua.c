@@ -838,7 +838,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case '\'':
 			case '"':
-				if (doc[1] <= ' ' && isVar(doc[-1])) {
+				if (doc[1] <= ' ' || isVar(doc[-1])) {
 					*fmt++ = *doc;
 				} else {
 					*fmt++ = '`';
