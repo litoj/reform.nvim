@@ -381,9 +381,25 @@ static void callable_fmt(const in **docPtr, char **fmtPtr) {
  */
 static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 	if (!**docPtr) return;
-	const in *doc = *docPtr - 1;
+	const in *doc = *docPtr;
 	char *fmt     = *fmtPtr;
 
+	if (*stop == '`' && *doc == '(') {
+		if (alike(doc + 1, "method)")) callable_fmt(&doc, &fmt);
+		else {
+			if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
+			else {
+				/* while (*doc != ')') *fmt++ = *doc++;
+				 *fmt++ = ')';
+				 *fmt++ = '.'; */
+			}
+
+			while (*doc != ')') doc++;
+			doc += 2; // ') '
+		}
+	}
+
+	doc--;
 	while (!alike(++doc, stop) && *doc) switch (*doc) {
 			case 'f': // check for function keyword (definition or anonymous function
 				if (doc[-1] == '\n' && (doc[8] == ' ' || doc[8] == '(') && alike(doc + 1, "unction"))
@@ -567,58 +583,12 @@ static int param_docs_fmt(const in **docPtr, char **fmtPtr) {
 char *lua_fmt(const in *doc, char *fmt, int len) {
 	const in *docEnd = doc + len;
 	const char *fmt0 = fmt; // for checking beginning of output
-	fmt              = append(fmt, "```lua\n");
-	if (alike(docEnd - 4, "\n```")) {
-		docEnd -= 6;
-		while (1) {
-			while (*docEnd != '`') docEnd--;
-			if (alike(docEnd - 2, "```") && (docEnd - 3 <= doc || docEnd[-3] == '\n')) break;
-			else docEnd--;
-		}
 
-		// ```\nsome simple text``` - no detailed docs, only signature
-		if (docEnd - 8 > doc && alike(docEnd - 8, "\n---\n\n```lua\n")) {
-			const in *docCode = docEnd + 5;
-			docEnd -= 8; // end normal parsing regime before the end block
-
-			code_fmt(&docCode, &fmt, "```");
-
-			// drop the first block (is the same, just less detailed)
-			doc += 7;
-			while (1) {
-				while (*doc != '`') doc++;
-				if (alike(doc, "```")) break;
-				else doc++;
-			}
-			doc += 2;
-		}
-	}
-
-	if (alike(doc, "```")) {
-		doc += 7;
-		if (*doc == '(') {
-			if (alike(doc + 1, "method)")) {
-				callable_fmt(&doc, &fmt);
-			} else {
-				if (doc[1] == 'g') fmt = append(fmt, "_G."); // (global)
-
-				doc += 5;
-				while (*doc != ')') doc++;
-				doc += 2;
-			}
-		}
-		code_fmt(&doc, &fmt, "```");
-		doc += 3;
-	}
-
-	while (*--fmt <= ' ') {}
-	fmt = append(fmt + 1, "\n```\n\n");
-
-	if (doc >= docEnd) return fmt - 1;
-	int indent[] = {
-	  -1, -1, -1
-	}; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
+	int indent[]     = {
+    -1, -1, -1
+  }; // 1st lvl, 2nd lvl, 1st lvl set text wrap indent | deeper levels kept
 	char kind = 0;
+	doc--;
 	while (++doc < docEnd) {
 		switch (*doc) {
 			case '[':
@@ -646,7 +616,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			case '`': // code with '```'
 				if (doc[1] != '`' || doc[2] != '`') {
 					*fmt++ = '`';
-					while (*++doc && *doc != '`') *fmt++ = *doc;
+					while (++doc < docEnd && *doc != '`') *fmt++ = *doc;
 					*fmt++ = '`';
 					if (*doc != '`') doc--;
 					break;
@@ -655,7 +625,8 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				if (*doc != '`' && !alike(doc + 1, "pre>")) *fmt++ = *doc;
 				else {
 					const char *end = *doc == '`' ? "```" : "</pre>";
-					while (*--fmt == ' ') {}
+					if (fmt > fmt0 + 1 && fmt[-2] != '\n' && kind) *fmt++ = '\n';
+					while (--fmt > fmt0 && *fmt == ' ') {}
 					fmt = append(fmt + 1, "```");
 					if (*(doc += (*doc == '`' ? 3 : 5)) != '\n')
 						while (*doc > '\n') *fmt++ = *doc++;
@@ -785,7 +756,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 			} break;
 			case '\n': {
 				if (fmt > fmt0 && fmt[-1] == ' ') fmt--;
-				if (fmt == fmt0 || fmt[-1] != '\n') *fmt++ = '\n';
+				if (fmt > fmt0 && fmt[-1] != '\n') *fmt++ = '\n';
 				if (alike(++doc, "---\n")) doc += 4;
 
 				int j = 0; // get indentation
