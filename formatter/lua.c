@@ -625,7 +625,7 @@ char *lua_fmt(const in *doc, char *fmt, int len) {
 				if (*doc != '`' && !alike(doc + 1, "pre>")) *fmt++ = *doc;
 				else {
 					const char *end = *doc == '`' ? "```" : "</pre>";
-					if (fmt > fmt0 + 1 && fmt[-2] != '\n' && kind) *fmt++ = '\n';
+					if (fmt > fmt0 + 1 && fmt[-2] != '\n') *fmt++ = '\n';
 					while (--fmt > fmt0 && *fmt == ' ') {}
 					fmt = append(fmt + 1, "```");
 					if (*(doc += (*doc == '`' ? 3 : 5)) != '\n')
