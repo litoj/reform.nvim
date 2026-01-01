@@ -55,22 +55,27 @@ end
 function M.tbl_short_diff(...) return M.tbl_diff({ expand_unique = '…' }, ...) end
 function M.tbl_full_diff(...) return M.tbl_diff({ expand_unique = true }, ...) end
 
-function M.tbl_cut_depth(tbl, copy, opts)
-	opts = vim.tbl_extend('force', M.config.cut_depth, opts or {})
+function M.tbl_cut_depth(tbl, opts)
+	if not opts or not opts.__done__ then
+		opts = vim.tbl_extend('keep', opts or {}, M.config.cut_depth)
+		opts.__done__ = true
+	end
 	local depth = opts.depth
-	copy = copy or vim.deepcopy(tbl, false)
 
+	local c = {}
 	for k, v in pairs(tbl) do
 		if type(v) == 'table' then
 			if depth > 0 then
 				opts.depth = depth - 1
-				M.tbl_cut_depth(v, copy[k], opts)
+				c[k] = M.tbl_cut_depth(v, opts)
 			else
-				copy[k] = opts.cuts
+				c[k] = opts.cuts
 			end
+		else
+			c[k] = v
 		end
 	end
-	return copy
+	return c
 end
 
 function M.tbl_print(tbl, loglevel)
@@ -81,14 +86,13 @@ end
 --- global printer extension for tables - 1 tbl=print with default depth, 2+ tbls=print with diff to first
 --- table printer arg parsing: [1]={}, [2]=number, [3]=vim.log.levels
 function M.override.reform.print(...)
-	local bundled = { ... }
-	local x, y = bundled[1], bundled[2]
+	local x, y = ...
 	if type(x) ~= 'table' then
 		M.override.vim.print(...)
 	elseif type(y) == 'table' then
 		M.tbl_print(M.tbl_diff({}, ...) or {})
 	elseif y == nil or type(y) == 'number' then
-		M.tbl_print(M.tbl_cut_depth(x, nil, { depth = y }), bundled[3])
+		M.tbl_print(M.tbl_cut_depth(x, { depth = y }), select(3, ...))
 	end
 end
 
