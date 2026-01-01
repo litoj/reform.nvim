@@ -119,7 +119,7 @@ error 'Cannot require a meta file'
 ---@field tbl_diff fun(opts:{expand_unique?:any},src:table,...:table):table? create diff of table contents compared to src
 ---@field tbl_short_diff fun(src:table,...:table):table? diff without unique tables expansion
 ---@field tbl_full_diff fun(src:table,...:table):table? diff with unique tables expansion
----@field tbl_cut_depth fun(tbl:table,opts?:{depth?:integer,cuts?:any}):table cut table at said depth
+---@field tbl_cut_depth fun(tbl:table,copy:table?,opts?:{depth?:integer,cuts?:any}):table cut table at said depth
 ---@field tbl_print fun(tbl:table, loglevel?: vim.log.levels) print table with guarantee of visibility to the user
 
 ---@class reform.sig_help.Override

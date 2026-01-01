@@ -8,7 +8,7 @@ local M = {
 	},
 	default_config = {
 		diff = { expand_unique = '…' },
-		cut_depth = { depth = 2, cuts = {} },
+		cut_depth = { depth = 2, cuts = '…' },
 		override = { print = true },
 	},
 }
@@ -55,21 +55,19 @@ end
 function M.tbl_short_diff(...) return M.tbl_diff({ expand_unique = '…' }, ...) end
 function M.tbl_full_diff(...) return M.tbl_diff({ expand_unique = true }, ...) end
 
-function M.tbl_cut_depth(tbl, opts)
+function M.tbl_cut_depth(tbl, copy, opts)
 	opts = vim.tbl_extend('force', M.config.cut_depth, opts or {})
 	local depth = opts.depth
+	copy = copy or vim.deepcopy(tbl, false)
 
-	local copy = {}
 	for k, v in pairs(tbl) do
 		if type(v) == 'table' then
 			if depth > 0 then
 				opts.depth = depth - 1
-				copy[k] = M.tbl_cut_depth(v, opts)
-			elseif opts.cuts then
+				M.tbl_cut_depth(v, copy[k], opts)
+			else
 				copy[k] = opts.cuts
 			end
-		else
-			copy[k] = v
 		end
 	end
 	return copy
@@ -90,7 +88,7 @@ function M.override.reform.print(...)
 	elseif type(y) == 'table' then
 		M.tbl_print(M.tbl_diff({}, ...) or {})
 	elseif y == nil or type(y) == 'number' then
-		M.tbl_print(M.tbl_cut_depth(x, { depth = y }), bundled[3])
+		M.tbl_print(M.tbl_cut_depth(x, nil, { depth = y }), bundled[3])
 	end
 end
 
