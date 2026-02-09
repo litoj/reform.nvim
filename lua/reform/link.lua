@@ -9,11 +9,12 @@ local M = {
 		unknown = 'definition',
 		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { '', 'gL' } },
 		filter = { tolerance = { startPost = 1, endPre = 1 } },
-		filepos_patterns = {
+		filepos_patterns = { -- from just behind the end of the filename to the end of next line
 			'^[#:(](%d+)[:,](%d+)',
 			'^[#:(](%d+)',
-			'^[^/._@%-]+[%s:]+(%d+)$', -- to match also errors in foreign languages
-			'^[^/._@%-]+[%s:]+(%d+):',
+			-- '^:?[^0-9/._@%-%s]+[%s:]+(%d+)$',
+			'^:[^0-9/._@%-%s]+%s+(%d+)', -- to match also errors in foreign languages
+			'^[^0-9/._@%-%s]+[%s:]+(%d+):',
 		},
 	},
 }
@@ -65,11 +66,6 @@ M.matchers = {
 	stacktrace_file_path = { -- match just the path, then find the context
 		luapat = '(~?[%w/.@_%-]+)',
 		use = function(path, matches, ev)
-			-- current and next lines
-			local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
-			-- the line+column info may be on the next line -> join them
-			local posStr = (lines[1]:sub(matches.to + 1) or '') .. (lines[2] or '')
-
 			local file = util.real_file(path, ev.buf)
 			-- find the real path by joining lines above the cursor
 			local i = 1
@@ -90,21 +86,29 @@ M.matchers = {
 			if not file then return false end
 			vim.cmd.e(file)
 
+			-- current and next lines
+			local lines = vim.api.nvim_buf_get_lines(ev.buf, ev.line - 1, ev.line + 1, false)
+			-- the line+column info may be on the next line -> join them
+			local posBase = (lines[1]:sub(matches.to + 1) or '')
+			local posJoined = posBase .. (lines[2] or '')
 			-- extract the line and column info, if available
 			local line, col
 			for _, ptn in ipairs(M.config.filepos_patterns) do
-				line, col = posStr:match(ptn)
-				if line then break end
-			end
-
-			if line then
-				col = tonumber(col, 10)
-				if not col or col == 0 then -- vim column is 0-indexed
-					col = 0
-				else
-					col = col - 1
+				line, col = posJoined:match(ptn)
+				if line and tonumber(line, 10) > vim.api.nvim_buf_line_count(0) then
+					line, col = posBase:match(ptn)
 				end
-				vim.api.nvim_win_set_cursor(0, { tonumber(line, 10), col })
+
+				if line then
+					col = tonumber(col, 10)
+					if not col or col == 0 then -- vim column is 0-indexed
+						col = 0
+					else
+						col = col - 1
+					end
+					vim.api.nvim_win_set_cursor(0, { tonumber(line, 10), col })
+					break
+				end
 			end
 		end,
 	},
