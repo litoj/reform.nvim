@@ -421,25 +421,20 @@ static void code_fmt(const in **docPtr, char **fmtPtr, const char *stop) {
 				*fmt++ = '-';
 				if (doc[1] == '-') { // lua comment
 					*fmt++ = '-';
-					doc++;
+					doc+=2;
 					if (doc[1] == '[' && doc[2] == '[') {
-						doc++;
 						add_string(&doc, &fmt);
-					} else
+					} else {
 						while (*doc > '\n') *fmt++ = *doc++;
+						doc--;
+					}
 				}
 				break;
 
 			case ':': // type
 				if (doc[1] == '\n') {
-					doc += 2;
-					while (*doc && *doc != '|') doc++;
-					if (!*doc) {
-						fmt     = append(fmt, ERROR_STR);
-						*docPtr = doc;
-						*fmtPtr = fmt;
-						return;
-					}
+					*fmt++='=';
+					break;
 				}
 
 				if (doc[1] == ' ') {

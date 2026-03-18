@@ -12,9 +12,7 @@ local M = {
 		filepos_patterns = { -- from just behind the end of the filename to the end of next line
 			'^[#:(](%d+)[:,](%d+)',
 			'^[#:(](%d+)',
-			-- '^:?[^0-9/._@%-%s]+[%s:]+(%d+)$',
-			'^:[^0-9/._@%-%s]+%s+(%d+)', -- to match also errors in foreign languages
-			'^[^0-9/._@%-%s]+[%s:]+(%d+):',
+			'^:?[^0-9/._@%-%s:]+[%s:]+(%d+):?', -- to match also errors in foreign languages
 		},
 	},
 }
