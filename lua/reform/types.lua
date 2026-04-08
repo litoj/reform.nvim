@@ -66,6 +66,9 @@ error 'Cannot require a meta file'
 ---@class reform.docmd: reform.Override
 ---@field default_config reform.docmd.Config
 ---@field config reform.docmd.Config
+--- Renders the item in the documentation window
+--- set it on completion.documentation.draw
+---@field blink_doc fun(opts:blink.cmp.CompletionDocumentationDrawOpts):nil
 
 ---@class reform.ui.Config: reform.Config.Override
 ---@field win? {input?: reform.util.WinConfig,select?:reform.util.WinConfig}

@@ -27,31 +27,9 @@ local M = {
 }
 M.config = M.default_config
 
-function M.override.reform.convert(doc, contents)
-	if contents and #contents > 0 and M.config.debug then
-		vim.notify('reform.docmd.convert(): ' .. vim.inspect(contents))
-	end
-	if doc.value and #doc.value == 0 or not doc.value and #doc == 0 then return {} end
-	if type(doc) == 'string' then return vim.split(doc.value or doc, '\n') end
-	local str = doc.value
-	if doc[1] and not str then
-		str = {}
-		for _, v in ipairs(doc) do
-			if type(v[1]) == 'string' then
-				if #str == 0 then
-					str = v
-				else
-					for i = 1, #v do
-						str[#str + 1] = v[i]
-					end
-				end
-			else
-				str[#str + 1] = v.value or v
-			end
-		end
-		str = table.concat(str, '\n')
-	end
-
+---@param str string
+---@return string[]
+function M.convert(str)
 	local ft = vim.bo.filetype
 	if -- file preview (constrained guess)
 		str:sub(1, 3) == '```'
@@ -73,27 +51,25 @@ function M.override.reform.convert(doc, contents)
 					f:close()
 				end
 			end
-
-			local ret = require 'reform.formatter'(str, ft, M.config.max_doc_len_increase)
-
-			if M.config.debug then
-				if M.config.debug:sub(1, 1) == '"' then --
-					if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
-						vim.fn.setreg(
-							M.config.debug:sub(2, 2),
-							str .. '\n\n>>>\n\n' .. (ret and table.concat(ret, '\n') or 'nil')
-						)
-					else
-						vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
-					end
-				elseif require('reform.util').exists(M.config.debug) then
-					vim.fs.rm(M.config.debug) -- delete input file if nothing went wrong
-				end
-			end
-
-			if ret then return ret end
 		end
-		local ret = require 'reform.formatter'(str, ft)
+
+		local ret = require 'reform.formatter'(str, ft, M.config.max_doc_len_increase)
+
+		if M.config.debug then
+			if M.config.debug:sub(1, 1) == '"' then --
+				if #M.config.debug == 2 or M.config.debug:sub(3, 3) == M.config.debug:sub(2, 2) then
+					vim.fn.setreg(
+						M.config.debug:sub(2, 2),
+						str .. '\n\n>>>\n\n' .. (ret and table.concat(ret, '\n') or 'nil')
+					)
+				else
+					vim.fn.setreg(M.config.debug:sub(3, 3), (ret and table.concat(ret, '\n') or 'nil'))
+				end
+			elseif require('reform.util').exists(M.config.debug) then
+				vim.fs.rm(M.config.debug) -- delete input file if nothing went wrong
+			end
+		end
+
 		if ret then return ret end
 	elseif type(M.config.ft) == 'table' and type(M.config.ft[ft]) == 'function' then
 		return M.config.ft[ft](str, ft)
@@ -108,7 +84,7 @@ function M.override.reform.convert(doc, contents)
 	end
 	local _, to, label = str:find('^(.-)\n', 4)
 	if str:sub(to + 1, to + 3) == '﻿' then -- windows files cmp preview bug
-		str = '```' .. (M.config.labels[label] or label) .. '\n' .. str:sub(to + 5)
+		str = ('```%s\n%s'):format(M.config.labels[label] or label, str:sub(to + 5))
 	else
 		label = M.config.labels[label]
 		if label then str = '```' .. label .. '\n' .. str:sub(to + 1) end
@@ -116,13 +92,53 @@ function M.override.reform.convert(doc, contents)
 	return vim.split(str, '\n')
 end
 
-function M.default_config.override.stylize(buf, contents, _)
+---@param doc lsp.MarkedString|lsp.MarkedString[]|lsp.MarkupContent
+---@param contents string[]? List of strings to extend with converted lines. Defaults to {}.
+---@return string[] extended with lines of converted markdown.
+---@see https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover
+function M.override.reform.convert(doc, contents)
+	if doc.value then
+		if #doc.value == 0 then return {} end
+	else
+		if #doc == 0 then return {} end
+	end
+	if type(doc) == 'string' then return vim.split(doc.value or doc, '\n') end
+
+	local str = doc.value
+	if doc[1] and not str then
+		local tbl = {}
+		for _, v in ipairs(doc) do
+			if v[1] then
+				for _, s in ipairs(v) do
+					tbl[#tbl + 1] = s
+				end
+			else
+				tbl[#tbl + 1] = v.value or v
+			end
+		end
+		str = table.concat(tbl, '\n')
+	end
+
+	local ret = M.convert(str)
+	if not contents then return ret end
+	for _, v in ipairs(ret) do
+		contents[#contents + 1] = v
+	end
+	return contents
+end
+
+function M.override.reform.stylize(buf, contents, _)
 	vim.bo[buf].ft = 'markdown'
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, contents)
 	return contents
 end
 
-function M.default_config.override.convert_sig(sig, ft, _)
+---@param sig lsp.SignatureHelp Response of `textDocument/SignatureHelp`
+---@param ft string? filetype that will be use as the `lang` for the label markdown code block
+---@param triggers string[]? list of trigger characters from the lsp server. used to better determine parameter offsets
+---@return string[]? # lines of converted markdown.
+---@return Range4? # highlight range for the active parameter
+function M.override.reform.convert_sig(sig, ft, triggers)
 	local p = sig.activeParameter
 	-- NOTE: intentionaly not testing activeSignature range for finding bad lsps
 	sig = sig.signatures[(sig.activeSignature or 0) + 1]
@@ -165,13 +181,42 @@ function M.default_config.override.convert_sig(sig, ft, _)
 	return ret
 end
 
+---@module 'blink.cmp'
+--- Set it to completion.documentation.draw to use
+---@param opts blink.cmp.CompletionDocumentationDrawOpts
+function M.blink_doc(opts)
+	if not opts.item.reformed then
+		local text = opts.item.detail or opts.item.label
+		if text:sub(1, 1) ~= '`' then text = ('```%s\n%s\n```'):format(vim.bo.filetype, text) end
+
+		local docs = opts.item.documentation
+		local val = docs and docs.value or docs
+		if docs and #val > 0 then
+			if docs.value then docs = { docs.value } end
+			docs[1] = docs[1]:gsub('^%-%-%-', '')
+			table.insert(docs, 1, text)
+		else
+			---@diagnostic disable-next-line: cast-local-type
+			docs = { text }
+		end
+
+		opts.item.documentation = vim.lsp.util.convert_input_to_markdown_lines(docs)
+		---@diagnostic disable-next-line: inject-field custom value for tracking already processed docs
+		opts.item.reformed = true
+	end
+
+	local buf = opts.window.buf
+	opts.window.config.filetype = 'markdown'
+	vim.api.nvim_buf_set_lines(buf, 0, -1, true, opts.item.documentation)
+end
+
 function M.override.reform.cmp_doc(self)
 	local item = self:get_completion_item()
 	if not item.documentation then return {} end
 	return vim.lsp.util.convert_input_to_markdown_lines(item.documentation)
 end
 
-function M.default_config.override.cmp_sig(self, sig, idx)
+function M.override.reform.cmp_sig(self, sig, idx)
 	local docs = {}
 	---@diagnostic disable-next-line: undefined-field
 	if sig.label then docs[1] = ('```\n%s```'):format(self:_signature_label(sig, idx)) end
