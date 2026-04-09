@@ -52,7 +52,7 @@ function M.make_event(mouse)
 		return { buf = buf, line = m.line, column = m.column, mouse = true }
 	else
 		local pos = vim.api.nvim_win_get_cursor(0)
-		return { buf = 0, line = pos[1], column = pos[2] + 1 }
+		return { buf = vim.api.nvim_get_current_buf(), line = pos[1], column = pos[2] + 1 }
 	end
 end
 

@@ -190,7 +190,7 @@ function M.handle(ev)
 		elseif vim.bo[ev.buf].buftype == 'terminal' or type(cfg) ~= 'table' then
 			return vim.notify 'No link found'
 		end
-	end -- only get git url in visual mode
+	end -- in visual mode get only git url
 
 	local link = M.get_git_url(cfg.branch == 'default', from, to)
 	if not link then return vim.notify 'No git repo found' end
