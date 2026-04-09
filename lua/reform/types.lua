@@ -131,7 +131,7 @@ error 'Cannot require a meta file'
 
 ---@class reform.sig_help.Config: reform.Config.Override,reform.Config.Mapping
 ---@field override? reform.sig_help.Override
----@field mapppings? {toggle:string[]} keymap for toggling displayed window + auto_show
+---@field mapping? {toggle_autoshow:string[],show_or_cycle:string[], show_or_toggle_autoshow:string[]} keymap for toggling displayed window + auto_show and cycling sigs
 ---@field max_line_offset? integer
 ---@field max_column_offset? integer
 ---@field ignore_width_above? number
@@ -145,8 +145,10 @@ error 'Cannot require a meta file'
 ---@field lsc_on_attach fun(client, buf)|false currently used lsp on_attach override function
 ---@field config reform.sig_help.Config
 ---@field win {bufnr:integer,id:integer,from_line:integer,to_line:integer,width:integer,cul:integer,cuc:integer,close:fun(self),is_valid:fun(self):boolean,integer[]|nil}
----@field signature {idx:integer,label:string,param_idx:integer,needs_update:fun(self, sig, content_only:boolean):boolean}
----@field toggle fun()
+---@field signature {idx:integer,label:string,param_idx:integer,needs_update:fun(self, result:lsp.SignatureHelp, content_only:boolean, advance:integer?):(false|integer)}
+---@field toggle_autoshow fun()
+---@field show_or_cycle fun()
+---@field show_or_toggle_autoshow fun()
 
 ---@class reform.Config
 ---@field docmd? boolean|reform.docmd.Config reform of all markdown documentation/signature...

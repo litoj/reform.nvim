@@ -4,7 +4,7 @@ local M = {
 	override = {
 		set = {},
 		vim = {
-			lsp_sig = vim.lsp.handlers['textDocument/signatureHelp'],
+			lsp_sig = vim.lsp.buf.signature_help,
 			lsc_on_attach = false,
 		},
 		reform = {},
@@ -24,7 +24,7 @@ local M = {
 			lsp_sig = true,
 			lsc_on_attach = true,
 		},
-		mapping = { { 'i', '<C-S-Space>' } },
+		mapping = { show_or_cycle = { 'i', '<C-S-Space>' }, toggle_autoshow = { 'n', '<C-S-Space>' } },
 	},
 	win = {
 		bufnr = 0,
@@ -43,13 +43,13 @@ local M = {
 }
 M.config = M.default_config
 
-function M.win.close(self)
+function M.win:close()
 	if self.id < 0 then return end
 	if vim.api.nvim_win_is_valid(self.id) then vim.api.nvim_win_close(self.id, false) end
 	self.id = -1
 end
 
-function M.win.is_valid(self)
+function M.win:is_valid()
 	if self.id < 0 or not vim.api.nvim_win_is_valid(self.id) then return false end
 	local from_line = vim.api.nvim_win_get_position(self.id)[1] + vim.fn.line 'w0' - 1
 	local to_line = from_line + vim.api.nvim_win_get_height(self.id) + 1
@@ -69,65 +69,42 @@ function M.win.is_valid(self)
 		cursor
 end
 
-function M.signature.needs_update(self, sig, content_only)
-	local s = sig.signatures[(sig.activeSignature or 0) + 1]
-	if not s then return false end
-	local param_idx = s.activeParameter or sig.activeParameter or -1
+function M.signature:needs_update(result, content_only, advance)
+	local active = (result.activeSignature or 0) + 1
+	local sigs = result.signatures
+	if advance then -- update index as the user requests
+		active = (self.idx + advance - 1) % #sigs + 1
+	else -- if on the same method, update the signature index to use the last one
+		local old = sigs[self.idx]
+		-- use old signature if it covers current param
+		if
+			old
+			and old.label == self.label
+			and #old.parameters > (old.activeParameter or result.activeParameter or -1)
+		then
+			active = self.idx
+		end
+	end
 
+	local s = sigs[active]
+	if not s then return false end
+	local param_idx = s.activeParameter or result.activeParameter or -1
+
+	if param_idx < 0 and M.config.require_active_param then return false end
 	if
-		(param_idx < 0 and M.config.require_active_param)
-		or (
-			content_only
-			and self.label == s.label
-			and self.param_idx == param_idx
-			and self.idx == sig.activeSignature
-		)
+		content_only
+		and self.label == s.label
+		and self.param_idx == param_idx
+		and self.idx == active
 	then
 		return false
 	end
 
 	self.label = s.label
 	self.param_idx = param_idx
-	self.idx = sig.activeSignature
-	return true
-end
-
--- TODO: doesn't work in nvim 0.11 - buf.sighelp processes now inplace
-function M.override.reform.lsp_sig_handler(_, sig, ctx, config)
-	-- Ignore result since buffer changed. This happens for slow language servers.
-	if vim.api.nvim_get_current_buf() ~= ctx.bufnr or true then return end
-
-	local update, cursor = M.win:is_valid()
-	if not update then M.win:close() end
-
-	if
-		not (sig and sig.signatures and sig.signatures[1])
-		or not M.config.valid_modes[vim.api.nvim_get_mode().mode]
-		or not M.signature:needs_update(sig, update)
-	then
-		return
-	end
-
-	local lines, hl =
-		---@diagnostic disable-next-line: param-type-mismatch
-		vim.lsp.util.convert_signature_help_to_markdown_lines(sig, vim.bo[ctx.bufnr].filetype, {})
-	if not lines or #lines == 0 then return end
-
-	if update then
-		vim.api.nvim_buf_set_lines(M.win.bufnr, 0, -1, false, lines)
-	else
-		if not cursor then cursor = vim.api.nvim_win_get_cursor(0) end
-		M.win.cul, M.win.cuc = cursor[1], cursor[2]
-		config = vim.tbl_deep_extend('force', M.config.win, config or {})
-		config.max_height = config.max_height or math.floor(vim.api.nvim_win_get_height(0) / 3)
-		config.focus_id = ctx.method
-		M.win.bufnr, M.win.id = vim.lsp.util.open_floating_preview(lines, 'markdown', config)
-		vim.bo[M.win.bufnr].modifiable = true
-	end
-
-	if hl then
-		vim.hl.range(M.win.bufnr, -1, 'LspSignatureActiveParameter', { hl[1], hl[2] }, { hl[3], hl[4] })
-	end
+	self.idx = active
+	result.activeSignature = active - 1
+	return active
 end
 
 function M.override.reform.lsc_on_attach(client, bufnr)
@@ -141,7 +118,7 @@ function M.override.reform.lsc_on_attach(client, bufnr)
 				elseif state.event == 'ModeChanged' then
 					if not M.config.valid_modes[state.match:sub(3, 3)] then
 						vim.schedule(function() -- delay for detecting snippet jumps
-							if vim.api.nvim_get_mode().mode == state.match:sub(3, 3) then M.win:close() end
+							if vim.fn.mode() == state.match:sub(3, 3) then M.win:close() end
 						end)
 					end
 					return
@@ -156,7 +133,84 @@ function M.override.reform.lsc_on_attach(client, bufnr)
 	end
 end
 
-function M.toggle()
+local oid
+---@param config? vim.lsp.buf.signature_help.Opts|{advance:integer} extended config for advancing sigs
+function M.override.reform.lsp_sig(config)
+	local win = vim.api.nvim_get_current_win()
+	vim.lsp.buf_request_all(
+		0,
+		'textDocument/signatureHelp',
+		function(client) return vim.lsp.util.make_position_params(win, client.offset_encoding) end,
+		function(results, ctx)
+			config = config or {}
+			-- Ignore result since buffer changed. This happens for slow language servers.
+			if vim.api.nvim_get_current_buf() ~= ctx.bufnr then return end
+
+			local update, cursor = M.win:is_valid()
+			if not update then M.win:close() end
+
+			local res ---@type lsp.SignatureHelp
+			for _, r in pairs(results) do
+				if not r.err and r.result and r.result.signatures then
+					res = r.result
+					break
+				end
+			end
+
+			if not res or not res.signatures[1] then
+				if config.silent ~= true then vim.notify 'No signature help available' end
+				return
+			end
+			if not M.config.valid_modes[vim.api.nvim_get_mode().mode] then return end
+
+			-- already up to date
+			local active = M.signature:needs_update(res, update, config.advance)
+			if not active then return end
+
+			local lines, hl =
+				vim.lsp.util.convert_signature_help_to_markdown_lines(res, vim.bo[ctx.bufnr].filetype, {})
+			if not lines or #lines == 0 then return end
+
+			if update then -- update window to new signature
+				vim.api.nvim_buf_set_lines(M.win.bufnr, 0, -1, false, lines)
+				vim.api.nvim_win_set_config(M.win.id, {
+					title = tostring(active),
+				})
+			else -- recreate the window at a new position and with possibly new content
+				if not cursor then cursor = vim.api.nvim_win_get_cursor(0) end
+				M.win.cul, M.win.cuc = cursor[1], cursor[2]
+				config = vim.tbl_deep_extend('force', M.config.win, config)
+				config.max_height = config.max_height or math.floor(vim.api.nvim_win_get_height(0) / 3)
+				config.focus_id = ctx.method
+				config.title = tostring(active)
+				M.win.bufnr, M.win.id = vim.lsp.util.open_floating_preview(lines, 'markdown', config)
+				vim.bo[M.win.bufnr].modifiable = true
+			end
+
+			if hl then
+				vim.hl.range(
+					M.win.bufnr,
+					1,
+					'LspSignatureActiveParameter',
+					{ hl[1], hl[2] },
+					{ hl[3], hl[4] }
+				)
+			end
+		end
+	)
+end
+
+function M.show_or_cycle()
+	local isValid = vim.api.nvim_win_is_valid(M.win.id)
+	vim.lsp.buf.signature_help { advance = isValid and 1 or nil }
+end
+
+function M.toggle_autoshow()
+	M.config.auto_show = M.config.auto_show == false
+	vim.print('reform.signature.auto_show: ' .. tostring(M.config.auto_show))
+end
+
+function M.show_or_toggle_autoshow()
 	local isValid = vim.api.nvim_win_is_valid(M.win.id)
 	if isValid == M.config.auto_show then
 		if M.config.auto_show then
@@ -166,28 +220,20 @@ function M.toggle()
 			vim.lsp.buf.signature_help()
 		end
 	else
-		M.config.auto_show = isValid
-		vim.print('reform.signature.auto_show: ' .. tostring(M.config.auto_show))
+		M.toggle_autoshow()
 	end
 end
 
-function M.override.set.lsp_sig(fn) vim.lsp.handlers['textDocument/signatureHelp'] = fn end
+function M.override.set.lsp_sig(fn) vim.lsp.buf.signature_help = fn end
 function M.override.set.lsc_on_attach(fn)
-	if M.lsc_on_attach ~= nil then
-		M.lsc_on_attach = fn
-		return
-	end
-	M.lsc_on_attach = fn
-
-	require('reform.util').with_mod('lspconfig.util', function(lsu)
-		lsu.on_setup = lsu.add_hook_before(lsu.on_setup, function(config)
-			config.on_attach = lsu.add_hook_before(config.on_attach, function(...)
-				if M.lsc_on_attach then M.lsc_on_attach(...) end
-			end)
-		end)
-	end)
+	local ag = vim.api.nvim_create_augroup('sig_help', { clear = true })
+	vim.api.nvim_create_autocmd('LspAttach', {
+		group = ag,
+		callback = function(s) fn(vim.lsp.get_client_by_id(s.data.client_id), s.buf) end,
+	})
 end
 
-function M.gen_mapping(_) return M.toggle end
+---@diagnostic disable-next-line: return-type-mismatch
+function M.gen_mapping(_, action) return M[action] end
 
 return M
