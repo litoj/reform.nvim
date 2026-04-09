@@ -51,6 +51,7 @@ require'reform'.setup {
       convert = true|fun(), -- main lspdocs-to-markdown conversion
       stylize = true|fun(), -- docs-display buffer highlighting
       convert_sig = true|fun(), -- signature-help docs composition
+      blink_doc = true|fun() -- blink.cmp docs complete formatted drawing
       cmp_doc = true|fun(), -- cmp preview docs parsing
       cmp_sig = true|fun(), -- cmp signature help docs parsing
     },
@@ -61,6 +62,23 @@ require'reform'.setup {
     labels = {cs = 'c_sharp'}, -- fixes of md ft labels for file previews
     no_preview = {csharp = true}, -- always parse docs with these code labels
     debug = '/tmp/reform.dbg', -- filename/'"io' for I+O save to register(s) or false to disable
+  },
+  sig_help = true|{
+    max_line_offset = 5, -- max cursor position change before repositioning the sig_help window
+    max_column_offset = 20,
+    ignore_width_above = 0.8, -- percentage of current window width or absolute value
+    valid_modes = { i = true, s = true }, -- keep displaying the signature in these modes
+    require_active_param = false, -- display signature help for activeParameter=-1
+    auto_show = true, -- show on CursorHoldI, toggleable with sig_help.toggle() mapping
+    win_config = { border = 'rounded', close_events = {'BufLeave', 'WinScrolled'} },
+    override = {
+      lsp_sig = true|fun(), -- `vim.lsp.buf.signature_help()` override
+      lsc_on_attach = true|fun(), -- lspconfig hook to auto-update the signature window
+    },
+    mapping = {
+      show_or_cycle = {'i', '<C-S-Space>'}, -- show sighelp or cycle to the next sighelp
+      toggle_autoshow = {'n', '<C-S-Space>'}, -- toggle automatic updating and window permanence
+    },
   },
   ui = true|{ -- vim.ui.input (used in vim.lsp.buf.rename)
     win = {
@@ -76,7 +94,7 @@ require'reform'.setup {
   },
   link = true|{ -- under-cursor-regex matcher with configurable actions
     mapping = { -- keymapping to open uri links (clicked or under cursor)
-      {{'', 'i'}, '<C-LeftMouse>'}, -- maps to link.mouse(), or manually: mouse=…
+      {{'', 'i'}, '<C-LeftMouse>'}, -- maps to link.mouse(), - open link under mouse
       {'n', 'gL'},                  -- maps to link.key()
     },
     handlers = { -- return false for failure → try other handlers if matched handler failed
@@ -99,8 +117,8 @@ require'reform'.setup {
   },
   toggle = true|{ -- quick toggle/change of values under cursor - uses same system as `link`
     mapping = { -- if cursor outside match, move cursor to its start
-      {{'n', 'i'}, '<A-a>', {action = 'inc', setCol = 'closer'}, -- closer/start/end of match
-      {{'n', 'i'}, '<A-A>', {action = 'dec', setCol = 'closer'}, -- or dec=…nvim.Keymap[]
+      inc = { { 'n', 'i' }, '<A-a>', { setCol = 'closer' } }, -- closer/start/end of match
+      dec = { { 'n', 'i' }, '<A-A>', { setCol = 'closer' } }, -- or dec=…nvim.Keymap[]
       {{'n', 'i'}, '<A-C-a>', {action = 'tgl', filter={tolerance={startPost=0,endPre=0}}},
     },
     filter = {
@@ -128,20 +146,6 @@ require'reform'.setup {
     },
     -- set global print() to our extension for easy table diff and depth lookup
     override = {print = true},
-  },
-  sig_help = true|{
-    max_line_offset = 5, -- max cursor position change before repositioning the sig_help window
-    max_column_offset = 20,
-    ignore_width_above = 0.8, -- percentage of current window width or absolute value
-    valid_modes = { i = true, s = true }, -- keep displaying the signature in these modes
-    require_active_param = false, -- display signature help for activeParameter=-1
-    auto_show = true, -- show on CursorHoldI, toggleable with sig_help.toggle() mapping
-    win_config = { border = 'rounded', close_events = {'BufLeave', 'WinScrolled'} },
-    override = {
-      lsp_sig = true|fun(), -- `vim.lsp.handlers['textDocument/signatureHelp]` main override
-      lsc_on_attach = true|fun(), -- lspconfig on_attach - keeps sig_help updated in attached bufs
-    },
-    mapping = { (toggle=) {'i', '<C-S-Space>'} },
   },
 }
 ```

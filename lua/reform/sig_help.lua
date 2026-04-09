@@ -14,8 +14,8 @@ local M = {
 		max_column_offset = 20,
 		ignore_width_above = 0.8,
 		valid_modes = { i = true, s = true },
-		require_active_param = false,
-		auto_show = false,
+		require_active_param = false, -- should we hide sighelp if the name of the fn is in focus
+		auto_show = true,
 		win = {
 			border = 'rounded',
 			close_events = { 'BufLeave', 'WinScrolled' },
@@ -157,10 +157,7 @@ function M.override.reform.lsp_sig(config)
 				end
 			end
 
-			if not res or not res.signatures[1] then
-				if config.silent ~= true then vim.notify 'No signature help available' end
-				return
-			end
+			if not res or not res.signatures[1] then return end
 			if not M.config.valid_modes[vim.api.nvim_get_mode().mode] then return end
 
 			-- already up to date
