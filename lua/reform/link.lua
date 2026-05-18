@@ -7,7 +7,7 @@ local util = require 'reform.util'
 local M = {
 	default_config = {
 		unknown = 'definition',
-		mapping = { mouse = { { '', 'i' }, '<C-LeftMouse>' }, key = { '', 'gL' } },
+		mapping = { mouse = { { '', 'i', 't' }, '<C-LeftMouse>' }, key = { '', 'gL' } },
 		filter = { tolerance = { startPost = 1, endPre = 1 } },
 		filepos_patterns = { -- from just behind the end of the filename to the end of next line
 			'^[#:(](%d+)[:,](%d+)',
@@ -64,6 +64,7 @@ M.matchers = {
 	stacktrace_file_path = { -- match just the path, then find the context
 		luapat = '(~?[%w/.@_%-]+)',
 		use = function(path, matches, ev)
+			path = path:gsub('%.%.%..-/nvim/lazy/', os.getenv 'HOME' .. '/.local/share/nvim/lazy/')
 			local file = util.real_file(path, ev.buf)
 			-- find the real path by joining lines above the cursor
 			local i = 1

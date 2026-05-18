@@ -24,7 +24,10 @@ local M = {
 			lsp_sig = true,
 			lsc_on_attach = true,
 		},
-		mapping = { show_or_cycle = { 'i', '<C-S-Space>' }, toggle_autoshow = { 'n', '<C-S-Space>' } },
+		mapping = {
+			cycle_or_toggle_autoshow = { 'i', '<C-S-Space>' },
+			toggle_autoshow = { 'n', '<C-S-Space>' },
+		},
 	},
 	win = {
 		bufnr = 0,
@@ -202,9 +205,18 @@ function M.show_or_cycle()
 	vim.lsp.buf.signature_help { advance = isValid and 1 or nil }
 end
 
+function M.cycle_or_toggle_autoshow()
+	local isValid = vim.api.nvim_win_is_valid(M.win.id)
+	vim.lsp.buf.signature_help { advance = isValid and 1 or nil }
+	if isValid and M.signature.idx == 1 then
+		M.win:close()
+		M.toggle_autoshow()
+	end
+end
+
 function M.toggle_autoshow()
 	M.config.auto_show = M.config.auto_show == false
-	vim.print('reform.signature.auto_show: ' .. tostring(M.config.auto_show))
+	vim.print('reform.sig_help.auto_show: ' .. tostring(M.config.auto_show))
 end
 
 function M.show_or_toggle_autoshow()

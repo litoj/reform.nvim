@@ -149,6 +149,7 @@ error 'Cannot require a meta file'
 ---@field toggle_autoshow fun()
 ---@field show_or_cycle fun()
 ---@field show_or_toggle_autoshow fun()
+---@field cycle_or_toggle_autoshow fun()
 
 ---@class reform.Config
 ---@field docmd? boolean|reform.docmd.Config reform of all markdown documentation/signature...

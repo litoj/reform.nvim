@@ -199,7 +199,7 @@ function M.override.reform.select(items, opts, on_choice)
 		buffer = buf,
 		callback = function(s)
 			if s.match == '/' and not vim.v.event.abort then -- simulate enter to confirm search
-				vim.api.nvim_input '\013' -- runs in async, so we get to select the line first
+				vim.api.nvim_input '\r' -- runs in async, so we get to select the line first
 				vim.schedule(vim.cmd.noh)
 			end
 		end,
