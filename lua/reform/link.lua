@@ -64,8 +64,14 @@ M.matchers = {
 	stacktrace_file_path = { -- match just the path, then find the context
 		luapat = '(~?[%w/.@_%-]+)',
 		use = function(path, matches, ev)
-			path = path:gsub('%.%.%..-/nvim/lazy/', os.getenv 'HOME' .. '/.local/share/nvim/lazy/')
 			local file = util.real_file(path, ev.buf)
+			if not file then
+				path = path
+					:gsub('%.%.%..-/nvim/lazy/', os.getenv 'HOME' .. '/.local/share/nvim/lazy/')
+					:gsub('^.*/src/', './src/')
+					:gsub('.*/test/', './test/')
+				file = util.real_file(path, ev.buf)
+			end
 			-- find the real path by joining lines above the cursor
 			local i = 1
 			local src = { matches.from, matches.to, path }

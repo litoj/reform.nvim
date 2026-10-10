@@ -2,7 +2,7 @@
 
 MAKEFLAGS+=j8
 CC:=gcc
-CFLAGS+=-O3 -flto -fomit-frame-pointer
+CFLAGS+=-O2 -flto -fomit-frame-pointer
 LDFLAGS:=-fPIC -shared
 SHELL:=/bin/bash
 

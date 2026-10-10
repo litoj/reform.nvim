@@ -207,10 +207,11 @@ end
 
 function M.cycle_or_toggle_autoshow()
 	local isValid = vim.api.nvim_win_is_valid(M.win.id)
-	vim.lsp.buf.signature_help { advance = isValid and 1 or nil }
 	if isValid and M.signature.idx == 1 then
 		M.win:close()
 		M.toggle_autoshow()
+	else
+		vim.lsp.buf.signature_help { advance = isValid and 1 or nil }
 	end
 end
 
